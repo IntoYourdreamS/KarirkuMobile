@@ -12,11 +12,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KARIRKU">
         <activity
-            android:name=".register"
-            android:exported="false" />
-        <activity
-            android:name=".MainActivity"
+            android:name=".beranda"
             android:exported="true">
+<!--        <activity-->
+<!--            android:name=".register"-->
+<!--            android:exported="false" />-->
+<!--        <activity-->
+<!--            android:name=".MainActivity"-->
+<!--            android:exported="true">-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

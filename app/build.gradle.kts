@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace = "com.tem2.karirku"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.tem2.karirku"
-        minSdk = 24
-        targetSdk = 36
+        minSdk = 21
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -23,6 +23,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        buildFeatures {
+
+            viewBinding = true
         }
     }
     compileOptions {

@@ -6,4 +6,8 @@
     <color name="gray">#FF9E9E9E</color>
     <color name="gray_light">#FFE0E0E0</color>
 
+        <color name="nav_color_selected">#002E92</color>    <!-- Biru saat aktif -->
+        <color name="nav_color_unselected">#757575</color>
+
+
 </resources>

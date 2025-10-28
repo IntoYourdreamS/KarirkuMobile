@@ -42,7 +42,7 @@ public class beranda extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.home) {
-                loadFragment(new homeFragment());
+                loadFragment(new HomeFragment());
                 return true;
             } else if (itemId == R.id.scan) {
                 loadFragment(new scancvFragment());

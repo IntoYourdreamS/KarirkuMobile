@@ -11,23 +11,23 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KARIRKU">
-        <activity android:name=".JobDetailActivity" />
-        <activity android:name=".ChatDetailActivity" />
+
+        <!-- SPLASH SCREEN & LOGIN ACTIVITY -->
         <activity
-            android:name=".beranda"
+            android:name=".MainActivity"
             android:exported="true">
-<!--        <activity-->
-<!--            android:name=".register"-->
-<!--            android:exported="false" />-->
-<!--        <activity-->
-<!--            android:name=".MainActivity"-->
-<!--            android:exported="true">-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ACTIVITY LAINNYA -->
+        <activity android:name=".register" />
+        <activity android:name=".beranda" />
+        <activity android:name=".JobDetailActivity" />
+        <activity android:name=".ChatDetailActivity" />
+
     </application>
 
 </manifest>

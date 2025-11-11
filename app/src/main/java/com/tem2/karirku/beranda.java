@@ -14,7 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
-public class beranda extends AppCompatActivity { // PASTIKAN NAMA CLASS 'beranda'
+public class beranda extends AppCompatActivity {
 
     private LinearLayout navHome, navScan, navChat, navProfile;
     private ImageView iconHome, iconScan, iconChat, iconProfile;
@@ -61,7 +61,6 @@ public class beranda extends AppCompatActivity { // PASTIKAN NAMA CLASS 'beranda
     }
 
     private void setupCustomBottomNav() {
-        // PERBAIKI BAGIAN INI - Syntax yang benar:
         View.OnClickListener listener = v -> {
             Fragment fragment = null;
             LinearLayout activeTab = null;

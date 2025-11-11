@@ -12,6 +12,7 @@ public class Job implements Serializable {
     private String tag1;
     private String tag2;
     private String tag3;
+    private int idLowongan;
 
     // Constructor TAMBAH PARAMETER id
     public Job(String id, String companyName, String location, String jobTitle,
@@ -38,4 +39,21 @@ public class Job implements Serializable {
     public String getTag1() { return tag1; }
     public String getTag2() { return tag2; }
     public String getTag3() { return tag3; }
+
+    public int getIdLowongan() { return idLowongan; }
+    public void setIdLowongan(int idLowongan) { this.idLowongan = idLowongan; }
+
+    @Override
+    public String toString() {
+        return "Job{" +
+                "companyName='" + companyName + '\'' +
+                ", location='" + location + '\'' +
+                ", jobTitle='" + jobTitle + '\'' +
+                ", postedTime='" + postedTime + '\'' +
+                ", applicants='" + applicants + '\'' +
+                ", tag1='" + tag1 + '\'' +
+                ", tag2='" + tag2 + '\'' +
+                ", tag3='" + tag3 + '\'' +
+                '}';
+    }
 }

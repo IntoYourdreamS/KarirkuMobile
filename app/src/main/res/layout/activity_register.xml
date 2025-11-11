@@ -215,7 +215,7 @@
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogin"
+            android:id="@+id/btnRegister"
             android:layout_width="327dp"
             android:layout_height="56dp"
             android:layout_below="@id/linearLayout2"

@@ -30,7 +30,7 @@ public class chatFragment extends Fragment {
         // Data dummy HRD
         chatList.add(new ChatListItem("Sultan", "Halo apakah sudah mengisi form?", "12:30", R.drawable.imageprofile));
         chatList.add(new ChatListItem("HRD PT Maju Jaya", "Selamat siang, boleh kirim CV-nya?", "11:15", R.drawable.imageprofile));
-        chatList.add(new ChatListItem("Admin Edusync", "Terima kasih sudah melamar!", "Kemarin", R.drawable.imageprofile));
+        chatList.add(new ChatListItem("Admin Karirku", "Terima kasih sudah melamar!", "Kemarin", R.drawable.imageprofile));
 
         ChatListAdapter adapter = new ChatListAdapter(getContext(), chatList);
         rvChatList.setAdapter(adapter);

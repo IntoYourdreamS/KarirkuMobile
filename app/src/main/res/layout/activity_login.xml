@@ -152,7 +152,12 @@
         android:src="@drawable/buttongoogle"
         android:layout_below="@id/linearLayout3"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="30dp"/>
+        android:layout_marginTop="30dp"
+        android:contentDescription="Login dengan Google"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless" />
+
 
     <LinearLayout
         android:id="@+id/linearLayout2"

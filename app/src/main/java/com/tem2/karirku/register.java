@@ -3,47 +3,180 @@ package com.tem2.karirku;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
 public class register extends AppCompatActivity {
 
-    private EditText edtPassword;
+    private EditText edtNama, edtEmail, edtPassword, edtNotlp;
     private ImageView imgTogglePassword;
     private boolean isPasswordVisible = false;
+
+    private final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co";
+    private final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // Ambil view
-        TextView masukText = findViewById(R.id.textView5); // "Masuk"
+        TextView masukText = findViewById(R.id.textView5);
+        edtNama = findViewById(R.id.edt_nama);
+        edtEmail = findViewById(R.id.edt_email);
         edtPassword = findViewById(R.id.edt_Password);
+        edtNotlp = findViewById(R.id.edt_notlp);
         imgTogglePassword = findViewById(R.id.imgTogglePassword);
 
-        // Klik "Masuk" → balik ke MainActivity
         masukText.setOnClickListener(v -> {
-            Intent intent = new Intent(register.this, MainActivity.class);
-            startActivity(intent);
-            finish(); // biar RegisterActivity ditutup
+            startActivity(new Intent(register.this, MainActivity.class));
+            finish();
         });
 
-        // Toggle password
-        imgTogglePassword.setOnClickListener(v -> {
-            if (isPasswordVisible) {
-                edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                imgTogglePassword.setImageResource(R.drawable.eyeoff);
-                isPasswordVisible = false;
-            } else {
-                edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                imgTogglePassword.setImageResource(R.drawable.eyeon);
-                isPasswordVisible = true;
+        imgTogglePassword.setOnClickListener(v -> togglePasswordVisibility());
+        findViewById(R.id.btnRegister).setOnClickListener(v -> registerUser());
+    }
+
+    private void togglePasswordVisibility() {
+        if (isPasswordVisible) {
+            edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            imgTogglePassword.setImageResource(R.drawable.eyeoff);
+        } else {
+            edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+            imgTogglePassword.setImageResource(R.drawable.eyeon);
+        }
+        edtPassword.setSelection(edtPassword.getText().length());
+        isPasswordVisible = !isPasswordVisible;
+    }
+
+    private void registerUser() {
+        String nama = edtNama.getText().toString().trim();
+        String email = edtEmail.getText().toString().trim();
+        String password = edtPassword.getText().toString().trim();
+        String noTlp = edtNotlp.getText().toString().trim();
+
+        if (nama.isEmpty() || email.isEmpty() || password.isEmpty() || noTlp.isEmpty()) {
+            Toast.makeText(this, "Harap isi semua field!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            Toast.makeText(this, "Format email tidak valid!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (password.length() < 6) {
+            Toast.makeText(this, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        sendSignupToSupabase(email, password, nama, noTlp);
+    }
+
+    private boolean isValidEmail(String email) {
+        return email.matches("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}");
+    }
+
+    // 🔹 Registrasi ke Supabase Auth (otomatis kirim email verifikasi)
+    private void sendSignupToSupabase(String email, String password, String nama, String noTlp) {
+        String url = SUPABASE_URL + "/auth/v1/signup";
+
+        JSONObject body = new JSONObject();
+        try {
+            body.put("email", email);
+            body.put("password", password);
+        } catch (JSONException e) {
+            Log.e("REGISTER_ERROR", "JSON error: " + e.getMessage());
+            return;
+        }
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        JsonObjectRequest signupRequest = new JsonObjectRequest(Request.Method.POST, url, body,
+                response -> {
+                    Log.i("REGISTER_SUCCESS", "Signup success: " + response);
+                    Toast.makeText(this, "Registrasi berhasil! Cek email verifikasi kamu.", Toast.LENGTH_LONG).show();
+
+                    // Simpan data tambahan ke tabel pengguna
+                    saveUserToDatabase(nama, email, noTlp);
+
+                    startActivity(new Intent(register.this, MainActivity.class));
+                    finish();
+                },
+                error -> {
+                    String message = "Registrasi gagal.";
+                    if (error.networkResponse != null && error.networkResponse.data != null) {
+                        String err = new String(error.networkResponse.data);
+                        Log.e("REGISTER_ERROR", "Error Response: " + err);
+                        if (err.contains("User already registered")) {
+                            message = "Email sudah terdaftar!";
+                        } else if (err.contains("bounce")) {
+                            message = "Email tidak valid atau Supabase menolak pengiriman (bounce).";
+                        }
+                    } else {
+                        Log.e("REGISTER_ERROR", "Unknown network error: " + error);
+                    }
+
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                }) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
             }
-            edtPassword.setSelection(edtPassword.getText().length());
-        });
+        };
+
+        queue.add(signupRequest);
+    }
+
+    // 🔹 Simpan data tambahan ke tabel pengguna
+    private void saveUserToDatabase(String nama, String email, String noTlp) {
+        String url = SUPABASE_URL + "/rest/v1/pengguna";
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("nama_lengkap", nama);
+            jsonBody.put("email", email);
+            jsonBody.put("no_hp", noTlp);
+            jsonBody.put("role", "pencaker");
+        } catch (JSONException e) {
+            Log.e("REGISTER_DB_ERROR", "JSON error: " + e.getMessage());
+            return;
+        }
+
+        JsonObjectRequest dbRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
+                response -> Log.i("REGISTER_DB", "User data saved: " + response),
+                error -> Log.e("REGISTER_DB_ERROR", "Error: " + error.toString())) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                headers.put("Prefer", "return=minimal");
+                return headers;
+            }
+        };
+
+        Volley.newRequestQueue(this).add(dbRequest);
     }
 }

@@ -38,26 +38,16 @@ public class HomeFragment extends Fragment {
 
         // 🔹 Data dummy job
         jobList = new ArrayList<>();
-        jobList.add(new Job("Mekar", "Bendebesah City", "Nagih hutang ke nasabah",
+        jobList.add(new Job("1", "Mekar", "Bendebesah City", "Nagih hutang ke nasabah",
                 "2 Hari lalu", "130 Pendaftar", "Bengalan", "Fulltime", "Santai"));
-        jobList.add(new Job("PT. Sejahtera Abadi", "Jember", "Customer Service Perbankan",
+        jobList.add(new Job("2", "PT. Sejahtera Abadi", "Jember", "Customer Service Perbankan",
                 "1 Hari lalu", "245 Pendaftar", "Perbankan", "Kontrak", "Remote"));
-        jobList.add(new Job("CV. Maju Bersama", "Surabaya", "Admin Data Keuangan",
+        jobList.add(new Job("3", "CV. Maju Bersama", "Surabaya", "Admin Data Keuangan",
                 "5 Hari lalu", "80 Pendaftar", "Keuangan", "Part-time", "On-site"));
-        jobList.add(new Job("PT. Mitra Digital", "Malang", "Frontend Developer",
+        jobList.add(new Job("4", "PT. Mitra Digital", "Malang", "Frontend Developer",
                 "3 Hari lalu", "56 Pendaftar", "Teknologi", "Fulltime", "Hybrid"));
-        jobList.add(new Job("PT. Cahaya Abadi", "Sidoarjo", "Quality Control Pabrik",
+        jobList.add(new Job("5", "PT. Cahaya Abadi", "Sidoarjo", "Quality Control Pabrik",
                 "1 Minggu lalu", "110 Pendaftar", "Produksi", "Kontrak", "Shift"));
-        jobList.add(new Job("PT. Arta Mandiri", "Jakarta", "UI/UX Designer",
-                "1 Hari lalu", "95 Pendaftar", "Desain", "Fulltime", "Remote"));
-        jobList.add(new Job("CV. Data Insight", "Bandung", "Data Analyst",
-                "2 Hari lalu", "120 Pendaftar", "Teknologi", "Fulltime", "Hybrid"));
-        jobList.add(new Job("PT. Hijau Lestari", "Yogyakarta", "Ahli Agronomi",
-                "3 Hari lalu", "64 Pendaftar", "Pertanian", "Kontrak", "Lapangan"));
-        jobList.add(new Job("CV. Sumber Energi", "Semarang", "Teknisi Panel Surya",
-                "5 Hari lalu", "45 Pendaftar", "Teknik", "Fulltime", "On-site"));
-        jobList.add(new Job("PT. Global Edukasi", "Surakarta", "Instruktur Komputer",
-                "6 Hari lalu", "72 Pendaftar", "Pendidikan", "Part-time", "On-site"));
 
         // 🔹 Set adapter
         jobAdapter = new JobAdapter(getContext(), jobList);

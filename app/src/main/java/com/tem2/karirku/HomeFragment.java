@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
@@ -84,6 +85,24 @@ public class HomeFragment extends Fragment {
         tabTerbaru.setOnClickListener(tabClickListener);
         tabTerlama.setOnClickListener(tabClickListener);
 
+        // ✅ TAMBAHAN: Click listener untuk icon notifikasi
+        ImageView imgNotif = view.findViewById(R.id.imgnotif);
+        imgNotif.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openNotificationFragment();
+            }
+        });
+
         return view;
+    }
+
+    // ✅ TAMBAHAN: Method untuk buka NotificationFragment
+    private void openNotificationFragment() {
+        NotificationFragment notificationFragment = new NotificationFragment();
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.frameLayout, notificationFragment) // Sesuaikan dengan ID container di activity_beranda.xml
+                .addToBackStack(null)
+                .commit();
     }
 }

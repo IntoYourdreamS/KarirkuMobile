@@ -13,7 +13,6 @@ import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.List;
- 
 
 public class chatFragment extends Fragment {
     private RecyclerView rvChatList;

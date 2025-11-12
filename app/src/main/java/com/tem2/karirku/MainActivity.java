@@ -3,9 +3,12 @@ package com.tem2.karirku;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +29,8 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText edtEmail, edtPassword;
     private ImageView icGoogle;
+    private ImageView splashScreen;
+    private RelativeLayout loginForm;
 
     // ✅ Ganti dengan project Supabase kamu
     private final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co";
@@ -36,6 +41,32 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        // Inisialisasi view untuk splash screen
+        splashScreen = findViewById(R.id.splashScreen);
+        loginForm = findViewById(R.id.loginForm);
+
+        setupSplashScreen();
+    }
+
+    private void setupSplashScreen() {
+        loginForm.setVisibility(View.GONE);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Sembunyikan splash screen
+                splashScreen.setVisibility(View.GONE);
+
+                // Tampilkan login form
+                loginForm.setVisibility(View.VISIBLE);
+
+                // Setup login logic setelah splash selesai
+                setupLoginLogic();
+            }
+        }, 1000); // 1 DETIK
+    }
+
+    private void setupLoginLogic() {
         edtEmail = findViewById(R.id.edt_email);
         edtPassword = findViewById(R.id.edt_Password);
         icGoogle = findViewById(R.id.ic_google);
@@ -52,10 +83,28 @@ public class MainActivity extends AppCompatActivity {
         });
 
         icGoogle.setOnClickListener(v -> loginWithGoogle());
+
+        // Tambahkan click listener untuk daftar text
+        findViewById(R.id.textView5).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, register.class);
+            startActivity(intent);
+        });
+
+        // Toggle password visibility
+        ImageView imgTogglePassword = findViewById(R.id.imgTogglePassword);
+        imgTogglePassword.setOnClickListener(v -> {
+            if (edtPassword.getInputType() == 129) { // Password hidden
+                edtPassword.setInputType(1); // Text visible
+                imgTogglePassword.setImageResource(R.drawable.eyeon);
+            } else {
+                edtPassword.setInputType(129); // Password hidden
+                imgTogglePassword.setImageResource(R.drawable.eyeoff);
+            }
+            edtPassword.setSelection(edtPassword.getText().length());
+        });
     }
 
     // 🔹 LOGIN MANUAL VIA REST API
-    // Di method loginManual, tambahkan pengecekan email verified
     private void loginManual(String email, String password) {
         String url = SUPABASE_URL + "/rest/v1/pengguna?email=eq." + email + "&select=*";
 
@@ -70,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     if (response.length() > 0) {
                         try {
                             JSONObject user = response.getJSONObject(0);
-                            String pass = user.optString("password_hash", "");
+                            String pass = user.optString("password", "");
                             boolean emailVerified = user.optBoolean("email_verified", false);
 
                             if (pass.equals(password)) {

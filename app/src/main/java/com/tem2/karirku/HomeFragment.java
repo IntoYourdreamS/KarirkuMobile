@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,6 +62,15 @@ public class HomeFragment extends Fragment {
         jobAdapter = new JobAdapter(getContext(), filteredJobList);
         recyclerJobs.setAdapter(jobAdapter);
 
+        // ✅ TAMBAHAN: Click listener untuk icon notifikasi
+        ImageView imgNotif = view.findViewById(R.id.imgnotif);
+        imgNotif.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openNotificationFragment();
+            }
+        });
+
         loadLowonganFromAPI();
         setupSearchListener();
 
@@ -87,6 +97,14 @@ public class HomeFragment extends Fragment {
         tabTerlama.setOnClickListener(tabClickListener);
 
         return view;
+    }
+
+    private void openNotificationFragment() {
+        NotificationFragment notificationFragment = new NotificationFragment();
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.frameLayout, notificationFragment)
+                .addToBackStack(null)
+                .commit();
     }
 
     // 🔍 Setup Real-time Search
@@ -284,8 +302,6 @@ public class HomeFragment extends Fragment {
 
         jobAdapter.setData(filteredJobList);
     }
-
-
 
     // 🔍 Cek apakah job cocok dengan keyword (untuk CV filter)
     private boolean matchesKeyword(Job job, String keyword) {

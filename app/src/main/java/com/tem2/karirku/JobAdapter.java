@@ -1,7 +1,6 @@
 package com.tem2.karirku;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,20 +42,12 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         holder.tvTag2.setText(job.getTag2());
         holder.tvTag3.setText(job.getTag3());
 
-        // Gambar perusahaan
+        // Gambar perusahaan (kalau punya aset default)
         holder.imgCompany.setImageResource(R.drawable.iconloker);
 
-        // 🔹 Tombol Simpan (klik ubah ikon)
+        // ðŸ”¹ Tombol Simpan (klik ubah ikon)
         holder.btnSave.setOnClickListener(v -> {
             holder.btnSave.setImageResource(R.drawable.icsimpan);
-        });
-
-        // 🔹 TAMBAH INI: Click listener untuk item card
-        holder.itemView.setOnClickListener(v -> {
-            // Buka JobDetailActivity dan kirim data job
-            Intent intent = new Intent(context, JobDetailActivity.class);
-            intent.putExtra("JOB_DATA", job); // Kirim seluruh object job
-            context.startActivity(intent);
         });
     }
 
@@ -65,13 +56,13 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         return jobList.size();
     }
 
-    // 🔹 Method untuk update data saat ganti tab
+    // ðŸ”¹ Method untuk update data saat ganti tab
     public void setData(List<Job> newList) {
         this.jobList = newList;
         notifyDataSetChanged();
     }
 
-    // 🔹 ViewHolder
+    // ðŸ”¹ ViewHolder
     public static class JobViewHolder extends RecyclerView.ViewHolder {
         ImageView imgCompany, btnSave;
         TextView tvCompanyName, tvLocation, tvJobTitle, tvPostedTime, tvApplicants;

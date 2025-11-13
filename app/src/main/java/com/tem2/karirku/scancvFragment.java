@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
@@ -38,6 +40,7 @@ import java.util.Locale;
 
 public class scancvFragment extends Fragment {
 
+    private static final String TAG = "SCAN_CV_DEBUG";
     private static final int PICK_PDF_REQUEST = 1001;
     private static final int CAMERA_REQUEST = 1002;
     private static final int CAMERA_PERMISSION_CODE = 100;
@@ -45,49 +48,80 @@ public class scancvFragment extends Fragment {
     private ImageView btnUploadPDF;
     private Button btnCamera;
     private TextRecognizer textRecognizer;
+    private Handler timeoutHandler;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_scancv, container, false);
 
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "📱 scancvFragment onCreate");
+        Log.d(TAG, "========================================");
+
         PDFBoxResourceLoader.init(requireContext());
 
         // Initialize ML Kit Text Recognition
-        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-        Log.d("CAMERA_OCR", "✅ TextRecognizer initialized");
+        try {
+            textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            Log.d(TAG, "✅ TextRecognizer initialized SUCCESS");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ TextRecognizer initialization FAILED: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         btnUploadPDF = view.findViewById(R.id.btnUploadPDF);
         btnCamera = view.findViewById(R.id.btnCamera);
 
-        btnUploadPDF.setOnClickListener(v -> openFileChooser());
-        btnCamera.setOnClickListener(v -> openCamera());
+        if (btnCamera == null) {
+            Log.e(TAG, "❌ btnCamera is NULL! Check XML id");
+        } else {
+            Log.d(TAG, "✅ btnCamera found");
+        }
+
+        btnUploadPDF.setOnClickListener(v -> {
+            Log.d(TAG, "📄 Upload PDF clicked");
+            openFileChooser();
+        });
+
+        btnCamera.setOnClickListener(v -> {
+            Log.d(TAG, "📷 Camera button clicked");
+            openCamera();
+        });
+
+        timeoutHandler = new Handler(Looper.getMainLooper());
 
         return view;
     }
 
-    // 📷 Buka kamera untuk scan CV
     private void openCamera() {
-        Log.d("CAMERA_OCR", "🎬 openCamera() called");
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "📸 openCamera() START");
+        Log.d(TAG, "========================================");
 
         // Check camera permission
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
-            Log.d("CAMERA_OCR", "⚠️ Camera permission not granted, requesting...");
-            // Request permission
+            Log.d(TAG, "⚠️ Camera permission NOT granted - requesting...");
             ActivityCompat.requestPermissions(requireActivity(),
                     new String[]{Manifest.permission.CAMERA},
                     CAMERA_PERMISSION_CODE);
         } else {
-            Log.d("CAMERA_OCR", "✅ Camera permission granted");
-            // Permission granted, open camera
-            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            if (cameraIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
-                Log.d("CAMERA_OCR", "📸 Launching camera...");
-                startActivityForResult(cameraIntent, CAMERA_REQUEST);
-            } else {
-                Log.e("CAMERA_OCR", "❌ Camera app not available");
-                Toast.makeText(getContext(), "Kamera tidak tersedia", Toast.LENGTH_SHORT).show();
-            }
+            Log.d(TAG, "✅ Camera permission already GRANTED");
+            launchCamera();
+        }
+    }
+
+    private void launchCamera() {
+        Log.d(TAG, "🎬 Launching camera intent...");
+        Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+        if (cameraIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+            Log.d(TAG, "✅ Camera app available - starting...");
+            Toast.makeText(getContext(), "📸 Membuka kamera...", Toast.LENGTH_SHORT).show();
+            startActivityForResult(cameraIntent, CAMERA_REQUEST);
+        } else {
+            Log.e(TAG, "❌ No camera app available");
+            Toast.makeText(getContext(), "❌ Kamera tidak tersedia di device ini", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -95,21 +129,25 @@ public class scancvFragment extends Fragment {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        Log.d("CAMERA_OCR", "📋 onRequestPermissionsResult: requestCode=" + requestCode);
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "📋 Permission Result");
+        Log.d(TAG, "Request Code: " + requestCode);
+        Log.d(TAG, "Results: " + (grantResults.length > 0 ? grantResults[0] : "empty"));
+        Log.d(TAG, "========================================");
 
         if (requestCode == CAMERA_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("CAMERA_OCR", "✅ Permission granted by user");
-                openCamera();
+                Log.d(TAG, "✅ Permission GRANTED by user");
+                launchCamera();
             } else {
-                Log.w("CAMERA_OCR", "❌ Permission denied by user");
-                Toast.makeText(getContext(), "Izin kamera diperlukan untuk scan CV", Toast.LENGTH_SHORT).show();
+                Log.w(TAG, "❌ Permission DENIED by user");
+                Toast.makeText(getContext(), "❌ Izin kamera diperlukan untuk scan CV", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    // 📄 Buka file picker untuk PDF
     private void openFileChooser() {
+        Log.d(TAG, "📂 Opening file chooser for PDF");
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("application/pdf");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -120,96 +158,172 @@ public class scancvFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        Log.d("CAMERA_OCR", "📬 onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "📬 onActivityResult CALLED");
+        Log.d(TAG, "Request Code: " + requestCode);
+        Log.d(TAG, "Result Code: " + resultCode + " (RESULT_OK=" + Activity.RESULT_OK + ")");
+        Log.d(TAG, "Data: " + (data != null ? "NOT NULL" : "NULL"));
+        Log.d(TAG, "========================================");
 
-        if (resultCode == Activity.RESULT_OK && data != null) {
-            if (requestCode == PICK_PDF_REQUEST && data.getData() != null) {
-                // Handle PDF
-                Log.d("CAMERA_OCR", "📄 PDF selected");
+        if (resultCode != Activity.RESULT_OK) {
+            Log.w(TAG, "⚠️ Result code is not OK - user cancelled?");
+            return;
+        }
+
+        if (data == null) {
+            Log.e(TAG, "❌ Intent data is NULL");
+            Toast.makeText(getContext(), "❌ Tidak ada data dari camera/file picker", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (requestCode == PICK_PDF_REQUEST) {
+            Log.d(TAG, "📄 Handling PDF upload");
+            if (data.getData() != null) {
                 Uri pdfUri = data.getData();
+                Log.d(TAG, "PDF URI: " + pdfUri);
                 handlePdfFile(pdfUri);
-            } else if (requestCode == CAMERA_REQUEST) {
-                // Handle Camera Image
-                Log.d("CAMERA_OCR", "📸 Camera image received");
-                Bundle extras = data.getExtras();
-
-                if (extras != null) {
-                    Log.d("CAMERA_OCR", "📦 Extras found, keys: " + extras.keySet());
-
-                    if (extras.get("data") != null) {
-                        Bitmap imageBitmap = (Bitmap) extras.get("data");
-                        Log.d("CAMERA_OCR", "🖼️ Bitmap received: " + imageBitmap.getWidth() + "x" + imageBitmap.getHeight());
-                        processCameraImage(imageBitmap);
-                    } else {
-                        Log.e("CAMERA_OCR", "❌ No 'data' key in extras");
-                        Toast.makeText(getContext(), "❌ Gagal mengambil gambar", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Log.e("CAMERA_OCR", "❌ Extras is null");
-                    Toast.makeText(getContext(), "❌ Gagal mengambil gambar", Toast.LENGTH_SHORT).show();
-                }
+            } else {
+                Log.e(TAG, "❌ PDF URI is null");
             }
-        } else {
-            Log.w("CAMERA_OCR", "⚠️ Result not OK or data is null");
+        }
+        else if (requestCode == CAMERA_REQUEST) {
+            Log.d(TAG, "📸 Handling camera result");
+            Bundle extras = data.getExtras();
+
+            if (extras == null) {
+                Log.e(TAG, "❌ Extras bundle is NULL");
+                Toast.makeText(getContext(), "❌ Gagal mengambil foto. Coba lagi.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Log.d(TAG, "📦 Extras keys: " + extras.keySet());
+
+            Object dataObj = extras.get("data");
+            if (dataObj == null) {
+                Log.e(TAG, "❌ 'data' key in extras is NULL");
+                Toast.makeText(getContext(), "❌ Foto tidak tersedia. Coba lagi.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!(dataObj instanceof Bitmap)) {
+                Log.e(TAG, "❌ 'data' is not a Bitmap, type: " + dataObj.getClass().getName());
+                Toast.makeText(getContext(), "❌ Format gambar tidak valid", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Bitmap imageBitmap = (Bitmap) dataObj;
+            Log.d(TAG, "✅ Bitmap received!");
+            Log.d(TAG, "   Size: " + imageBitmap.getWidth() + "x" + imageBitmap.getHeight());
+            Log.d(TAG, "   Config: " + imageBitmap.getConfig());
+            Log.d(TAG, "   ByteCount: " + imageBitmap.getByteCount());
+
+            processCameraImage(imageBitmap);
         }
     }
 
-    // 📷 Process gambar dari kamera dengan OCR
     private void processCameraImage(Bitmap bitmap) {
-        Log.d("CAMERA_OCR", "🔄 Starting OCR processing...");
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "🔄 processCameraImage() START");
+        Log.d(TAG, "========================================");
+
         Toast.makeText(getContext(), "🔍 Memproses gambar CV...", Toast.LENGTH_SHORT).show();
+
+        if (textRecognizer == null) {
+            Log.e(TAG, "❌ TextRecognizer is NULL! Reinitializing...");
+            try {
+                textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+                Log.d(TAG, "✅ TextRecognizer reinitialized");
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Failed to reinitialize: " + e.getMessage());
+                Toast.makeText(getContext(), "❌ OCR engine error. Restart app.", Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
 
         try {
             InputImage image = InputImage.fromBitmap(bitmap, 0);
-            Log.d("CAMERA_OCR", "✅ InputImage created successfully");
+            Log.d(TAG, "✅ InputImage created");
+
+            // Set timeout 30 detik
+            timeoutHandler.postDelayed(() -> {
+                Log.e(TAG, "⏱️ OCR TIMEOUT after 30 seconds");
+                Toast.makeText(getContext(), "⏱️ OCR timeout. Coba:\n• Foto lebih jelas\n• Gunakan Upload PDF", Toast.LENGTH_LONG).show();
+            }, 30000);
+
+            Log.d(TAG, "🚀 Starting OCR process...");
 
             textRecognizer.process(image)
                     .addOnSuccessListener(visionText -> {
+                        timeoutHandler.removeCallbacksAndMessages(null); // Cancel timeout
+
                         String recognizedText = visionText.getText();
 
-                        Log.d("CAMERA_OCR", "✅ OCR SUCCESS!");
-                        Log.d("CAMERA_OCR", "📝 Text length: " + recognizedText.length());
-                        Log.d("CAMERA_OCR", "📝 Text preview (first 200 chars): " +
-                                (recognizedText.length() > 200 ? recognizedText.substring(0, 200) : recognizedText));
-                        Log.d("CAMERA_OCR", "📝 Full text: " + recognizedText);
+                        Log.d(TAG, "========================================");
+                        Log.d(TAG, "✅✅✅ OCR SUCCESS! ✅✅✅");
+                        Log.d(TAG, "========================================");
+                        Log.d(TAG, "📝 Text length: " + recognizedText.length());
 
-                        if (recognizedText.isEmpty()) {
-                            Log.w("CAMERA_OCR", "⚠️ OCR returned empty text");
-                            Toast.makeText(getContext(),
-                                    "❌ Tidak ada text yang terdeteksi.\n\n💡 Tips:\n• Pastikan foto jelas\n• Coba foto lebih dekat\n• Gunakan pencahayaan baik\n\nAtau gunakan Upload PDF",
-                                    Toast.LENGTH_LONG).show();
-                            return;
+                        if (recognizedText.length() > 0) {
+                            Log.d(TAG, "📝 First 500 chars:");
+                            Log.d(TAG, recognizedText.substring(0, Math.min(500, recognizedText.length())));
+                            Log.d(TAG, "========================================");
                         }
 
-                        // Extract keywords dari text OCR
-                        Toast.makeText(getContext(), "✅ Text terdeteksi! Mencari keyword...", Toast.LENGTH_SHORT).show();
-                        extractKeywordsFromText(recognizedText, "gambar");
+                        if (recognizedText.isEmpty()) {
+                            Log.w(TAG, "⚠️ Text is EMPTY");
+                            Toast.makeText(getContext(),
+                                    "❌ Tidak ada text terdeteksi\n\n" +
+                                            "💡 Tips:\n" +
+                                            "• Pastikan foto jelas (tidak blur)\n" +
+                                            "• Gunakan pencahayaan yang baik\n" +
+                                            "• Foto dari jarak dekat\n" +
+                                            "• Text harus kontras dengan background\n\n" +
+                                            "Atau gunakan Upload PDF",
+                                    Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(getContext(), "✅ Text terdeteksi! Mencari keyword...", Toast.LENGTH_SHORT).show();
+                            extractKeywordsFromText(recognizedText, "kamera");
+                        }
                     })
                     .addOnFailureListener(e -> {
-                        Log.e("CAMERA_OCR", "❌ OCR FAILED: " + e.getClass().getSimpleName());
-                        Log.e("CAMERA_OCR", "❌ Error message: " + e.getMessage());
+                        timeoutHandler.removeCallbacksAndMessages(null); // Cancel timeout
+
+                        Log.e(TAG, "========================================");
+                        Log.e(TAG, "❌❌❌ OCR FAILED! ❌❌❌");
+                        Log.e(TAG, "========================================");
+                        Log.e(TAG, "Error class: " + e.getClass().getName());
+                        Log.e(TAG, "Error message: " + e.getMessage());
                         e.printStackTrace();
 
                         Toast.makeText(getContext(),
-                                "❌ Gagal memproses gambar\n\nError: " + e.getMessage() +
-                                        "\n\nCoba gunakan Upload PDF",
+                                "❌ Gagal memproses gambar\n\n" +
+                                        "Error: " + e.getMessage() + "\n\n" +
+                                        "Solusi:\n" +
+                                        "• Restart app\n" +
+                                        "• Update Google Play Services\n" +
+                                        "• Gunakan Upload PDF",
                                 Toast.LENGTH_LONG).show();
                     })
                     .addOnCompleteListener(task -> {
-                        Log.d("CAMERA_OCR", "🏁 OCR task completed. Success: " + task.isSuccessful());
+                        Log.d(TAG, "🏁 OCR task COMPLETED. Success: " + task.isSuccessful());
                     });
 
         } catch (Exception e) {
-            Log.e("CAMERA_OCR", "❌ Exception during image processing: " + e.getMessage());
+            Log.e(TAG, "========================================");
+            Log.e(TAG, "❌ EXCEPTION in processCameraImage");
+            Log.e(TAG, "========================================");
+            Log.e(TAG, "Exception: " + e.getClass().getName());
+            Log.e(TAG, "Message: " + e.getMessage());
             e.printStackTrace();
+
             Toast.makeText(getContext(), "❌ Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
-    // 📄 Process PDF file
     private void handlePdfFile(Uri pdfUri) {
         try {
             String fileName = getFileName(pdfUri);
+            Log.d(TAG, "📄 Processing PDF: " + fileName);
             Toast.makeText(getContext(), "📄 Memproses: " + fileName, Toast.LENGTH_SHORT).show();
 
             InputStream inputStream = requireContext().getContentResolver().openInputStream(pdfUri);
@@ -218,45 +332,32 @@ public class scancvFragment extends Fragment {
             String text = pdfStripper.getText(document);
             document.close();
 
-            Log.d("PDF_PARSE", "📝 Text dari PDF (length): " + text.length());
-            Log.d("PDF_PARSE", "📝 Text preview: " + (text.length() > 200 ? text.substring(0, 200) : text));
-
-            // Extract keywords dari PDF text
+            Log.d(TAG, "✅ PDF parsed. Text length: " + text.length());
             extractKeywordsFromText(text, "PDF");
 
         } catch (Exception e) {
-            Log.e("PDF_PARSE", "❌ Error: " + e.getMessage());
+            Log.e(TAG, "❌ PDF parse error: " + e.getMessage());
             e.printStackTrace();
             Toast.makeText(getContext(), "❌ Gagal membaca PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
-    // 🔍 Extract keywords dari text (PDF atau OCR)
     private void extractKeywordsFromText(String text, String source) {
-        Log.d("KEYWORD_EXTRACT", "🔍 Starting keyword extraction from " + source);
-        Log.d("KEYWORD_EXTRACT", "📝 Text length: " + text.length());
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "🔍 Extracting keywords from " + source);
+        Log.d(TAG, "========================================");
 
-        // Kata kunci yang relevan (disesuaikan dengan kategori Supabase)
         String[] keywords = {
-                // Teknologi
                 "teknologi", "technology", "software", "developer", "programmer", "IT", "coding",
-                "engineer", "java", "python", "web", "mobile", "android", "ios", "react", "angular",
-                // Desain
-                "desain", "design", "UI", "UX", "graphic", "photoshop", "figma", "illustrator", "corel",
-                // Keuangan
-                "keuangan", "finance", "accounting", "akuntan", "akuntansi", "financial", "auditor",
-                // Perbankan
-                "perbankan", "bank", "banking", "teller", "credit", "kredit",
-                // Produksi
-                "produksi", "production", "hardware", "manufaktur", "operator", "pabrik", "quality control",
-                // Administrasi
-                "administrasi", "admin", "sekretaris", "office", "data entry", "staff",
-                // Teknik
-                "teknik", "engineering", "mekanik", "elektro", "sipil", "mechanical", "electrical",
-                // Pertanian
-                "pertanian", "agriculture", "agronomi", "farming", "perkebunan",
-                // Pendidikan
-                "pendidikan", "education", "guru", "teacher", "dosen", "pengajar", "training"
+                "engineer", "java", "python", "web", "mobile", "android", "ios",
+                "desain", "design", "UI", "UX", "graphic",
+                "keuangan", "finance", "accounting", "akuntan",
+                "perbankan", "bank", "banking",
+                "produksi", "production", "manufaktur",
+                "administrasi", "admin",
+                "teknik", "engineering",
+                "pertanian", "agriculture",
+                "pendidikan", "education", "guru", "teacher"
         };
 
         List<String> matchedKeywords = new ArrayList<>();
@@ -264,46 +365,38 @@ public class scancvFragment extends Fragment {
 
         for (String keyword : keywords) {
             if (textLower.contains(keyword.toLowerCase(Locale.ROOT))) {
-                // Hindari duplikat
                 if (!matchedKeywords.contains(keyword)) {
                     matchedKeywords.add(keyword);
-                    Log.d("KEYWORD_EXTRACT", "✅ Match found: " + keyword);
+                    Log.d(TAG, "✅ Keyword match: " + keyword);
                 }
             }
         }
 
-        Log.d("KEYWORD_EXTRACT", "📊 Total keywords matched: " + matchedKeywords.size());
+        Log.d(TAG, "📊 Total matched: " + matchedKeywords.size());
 
-        // Hasil matching
         if (matchedKeywords.isEmpty()) {
-            Log.w("KEYWORD_EXTRACT", "⚠️ No keywords matched");
+            Log.w(TAG, "⚠️ No keywords matched");
             Toast.makeText(getContext(),
-                    "❌ Tidak ada kata kunci cocok dari " + source + ".\n\n" +
-                            "💡 Kata kunci yang dicari:\n" +
-                            "• Teknologi (IT, software, developer)\n" +
-                            "• Desain (UI/UX, graphic)\n" +
-                            "• Keuangan, Perbankan\n" +
-                            "• Produksi, Administrasi\n" +
-                            "• Teknik, Pertanian, Pendidikan\n\n" +
-                            "Cek halaman Home untuk semua lowongan.",
+                    "❌ Tidak ada kata kunci cocok dari " + source + "\n\n" +
+                            "Kata kunci yang dicari:\n" +
+                            "Teknologi, Desain, Keuangan, Perbankan,\n" +
+                            "Produksi, Admin, Teknik, Pertanian, Pendidikan\n\n" +
+                            "Cek Home untuk semua lowongan",
                     Toast.LENGTH_LONG).show();
             CVKeywordManager.getInstance().clearKeywords();
         } else {
-            // ✅ Simpan keyword ke Singleton
             CVKeywordManager.getInstance().setKeywords(matchedKeywords);
-
             String keywordText = String.join(", ", matchedKeywords);
-            Log.d("KEYWORD_EXTRACT", "✅ Keywords saved: " + keywordText);
+            Log.d(TAG, "✅ Keywords saved: " + keywordText);
 
             Toast.makeText(getContext(),
-                    "✅ CV berhasil dipindai dari " + source + "!\n\n" +
-                            "🎯 Kata kunci: " + keywordText + "\n\n" +
-                            "👉 Klik tab 'Home' untuk melihat lowongan yang cocok",
+                    "✅ CV berhasil dipindai!\n\n" +
+                            "🎯 Keyword: " + keywordText + "\n\n" +
+                            "👉 Klik tab 'Home' untuk lowongan cocok",
                     Toast.LENGTH_LONG).show();
         }
     }
 
-    // 📝 Get file name dari URI
     private String getFileName(Uri uri) {
         String result = null;
         try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
@@ -321,9 +414,12 @@ public class scancvFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+        }
         if (textRecognizer != null) {
             textRecognizer.close();
-            Log.d("CAMERA_OCR", "🔚 TextRecognizer closed");
+            Log.d(TAG, "🔚 TextRecognizer closed");
         }
     }
 }

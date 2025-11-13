@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
                     if (response.length() > 0) {
                         try {
                             JSONObject user = response.getJSONObject(0);
-                            String pass = user.optString("password_hash", "");
+                            String pass = user.optString("password", "");
                             boolean emailVerified = user.optBoolean("email_verified", false);
 
                             if (pass.equals(password)) {

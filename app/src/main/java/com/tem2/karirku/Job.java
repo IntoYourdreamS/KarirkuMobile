@@ -1,9 +1,6 @@
 package com.tem2.karirku;
 
-import java.io.Serializable;
-
-public class Job implements Serializable {
-    private String id; // TAMBAH INI
+public class Job {
     private String companyName;
     private String location;
     private String jobTitle;
@@ -14,11 +11,9 @@ public class Job implements Serializable {
     private String tag3;
     private int idLowongan;
 
-    // Constructor TAMBAH PARAMETER id
-    public Job(String id, String companyName, String location, String jobTitle,
+    public Job(String companyName, String location, String jobTitle,
                String postedTime, String applicants,
                String tag1, String tag2, String tag3) {
-        this.id = id;
         this.companyName = companyName;
         this.location = location;
         this.jobTitle = jobTitle;
@@ -29,8 +24,6 @@ public class Job implements Serializable {
         this.tag3 = tag3;
     }
 
-    // GETTER untuk id
-    public String getId() { return id; }
     public String getCompanyName() { return companyName; }
     public String getLocation() { return location; }
     public String getJobTitle() { return jobTitle; }

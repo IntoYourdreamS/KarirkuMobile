@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class KeywordMapper {
 
-    // 🎯 Mapping keyword CV ke kategori lowongan Supabase
+    // ðŸŽ¯ Mapping keyword CV ke kategori lowongan Supabase
     private static final Map<String, Set<String>> keywordMap = new HashMap<>();
 
     static {

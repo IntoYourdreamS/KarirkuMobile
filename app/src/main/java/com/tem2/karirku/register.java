@@ -21,7 +21,6 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 public class register extends AppCompatActivity {
 
@@ -76,24 +75,9 @@ public class register extends AppCompatActivity {
             return;
         }
 
-        if (!isValidEmail(email)) {
-            Toast.makeText(this, "Format email tidak valid!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (password.length() < 6) {
-            Toast.makeText(this, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         sendSignupToSupabase(email, password, nama, noTlp);
     }
 
-    private boolean isValidEmail(String email) {
-        return email.matches("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}");
-    }
-
-    // 🔹 Registrasi ke Supabase Auth (otomatis kirim email verifikasi)
     private void sendSignupToSupabase(String email, String password, String nama, String noTlp) {
         String url = SUPABASE_URL + "/auth/v1/signup";
 
@@ -111,29 +95,19 @@ public class register extends AppCompatActivity {
         JsonObjectRequest signupRequest = new JsonObjectRequest(Request.Method.POST, url, body,
                 response -> {
                     Log.i("REGISTER_SUCCESS", "Signup success: " + response);
-                    Toast.makeText(this, "Registrasi berhasil! Cek email verifikasi kamu.", Toast.LENGTH_LONG).show();
 
-                    // Simpan data tambahan ke tabel pengguna
+                    // Informasi ke user
+                    Toast.makeText(this, "Registrasi berhasil! Cek email kamu untuk verifikasi.", Toast.LENGTH_LONG).show();
+
+                    // Simpan data tambahan ke tabel pengguna (tanpa password)
                     saveUserToDatabase(nama, email, noTlp);
 
                     startActivity(new Intent(register.this, MainActivity.class));
                     finish();
                 },
                 error -> {
-                    String message = "Registrasi gagal.";
-                    if (error.networkResponse != null && error.networkResponse.data != null) {
-                        String err = new String(error.networkResponse.data);
-                        Log.e("REGISTER_ERROR", "Error Response: " + err);
-                        if (err.contains("User already registered")) {
-                            message = "Email sudah terdaftar!";
-                        } else if (err.contains("bounce")) {
-                            message = "Email tidak valid atau Supabase menolak pengiriman (bounce).";
-                        }
-                    } else {
-                        Log.e("REGISTER_ERROR", "Unknown network error: " + error);
-                    }
-
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    Log.e("REGISTER_ERROR", "Error: " + error.toString());
+                    Toast.makeText(this, "Registrasi gagal! Periksa koneksi atau email sudah digunakan.", Toast.LENGTH_LONG).show();
                 }) {
             @Override
             public Map<String, String> getHeaders() {
@@ -148,7 +122,6 @@ public class register extends AppCompatActivity {
         queue.add(signupRequest);
     }
 
-    // 🔹 Simpan data tambahan ke tabel pengguna
     private void saveUserToDatabase(String nama, String email, String noTlp) {
         String url = SUPABASE_URL + "/rest/v1/pengguna";
 
@@ -165,7 +138,7 @@ public class register extends AppCompatActivity {
 
         JsonObjectRequest dbRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                 response -> Log.i("REGISTER_DB", "User data saved: " + response),
-                error -> Log.e("REGISTER_DB_ERROR", "Error: " + error.toString())) {
+                error -> Log.e("REGISTER_DB_ERROR", "Error saving to DB: " + error.toString())) {
             @Override
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();

@@ -9,13 +9,11 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -30,21 +28,26 @@ public class chatFragment extends Fragment {
     private ChatAdapter chatAdapter;
     private List<Message> messageList;
     private String currentUserId = "user1";
+    private GeminiService geminiService;
+
+    // Untuk menangani typing indicator
+    private Message typingMessage;
+    private int typingMessagePosition = -1;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // Inflate layout chat detail langsung
         View view = inflater.inflate(R.layout.activity_chat_detail, container, false);
+
+        // Initialize Gemini Service dengan context
+        geminiService = new GeminiService(getContext());
 
         initViews(view);
         setupRecyclerView();
         setupClickListeners();
         loadBotWelcomeMessage();
 
-        // AUTO SHOW KEYBOARD SAAT FRAGMENT DIBUKA
         showKeyboard();
-
         return view;
     }
 
@@ -54,8 +57,8 @@ public class chatFragment extends Fragment {
         btnSend = view.findViewById(R.id.btnSend);
         tvChatTitle = view.findViewById(R.id.tvChatTitle);
 
-        // Set judul chatbot
-        tvChatTitle.setText("Karirku Assistant");
+        // Update title untuk menunjukkan ini adalah AI HRD
+        tvChatTitle.setText("HRD Assistant");
     }
 
     private void setupRecyclerView() {
@@ -64,7 +67,7 @@ public class chatFragment extends Fragment {
         rvChatMessages.setLayoutManager(new LinearLayoutManager(getContext()));
         rvChatMessages.setAdapter(chatAdapter);
 
-        // AUTO SCROLL KE BAWAH SAAT KEYBOARD MUNCUL
+        // Auto scroll ketika keyboard muncul
         rvChatMessages.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(View v, int left, int top, int right, int bottom,
@@ -106,12 +109,18 @@ public class chatFragment extends Fragment {
     }
 
     private void loadBotWelcomeMessage() {
-        // Pesan welcome dari bot
         Message welcomeMessage = new Message(
                 "1",
                 "bot",
-                "Karirku Assistant",
-                "Halo! Saya asisten Karirku. Ada yang bisa saya bantu terkait lowongan kerja atau karier Anda?",
+                "HRD Assistant",
+                "👋 Halo! Saya **Asisten HRD Karirku**.\n\n" +
+                        "Saya siap membantu Anda dengan:\n" +
+                        "• 🔍 Pencarian lowongan kerja\n" +
+                        "• 💼 Tips wawancara & CV\n" +
+                        "• 🚀 Pengembangan karier\n" +
+                        "• 💰 Negosiasi gaji\n" +
+                        "• 📈 Perencanaan karier\n\n" +
+                        "Silakan tanyakan apa saja seputar dunia kerja dan HRD!",
                 Calendar.getInstance(),
                 false
         );
@@ -119,7 +128,6 @@ public class chatFragment extends Fragment {
         messageList.add(welcomeMessage);
         chatAdapter.notifyDataSetChanged();
 
-        // Scroll ke bottom
         if (messageList.size() > 0) {
             rvChatMessages.scrollToPosition(messageList.size() - 1);
         }
@@ -128,7 +136,7 @@ public class chatFragment extends Fragment {
     private void sendMessage() {
         String messageContent = etMessage.getText().toString().trim();
         if (!messageContent.isEmpty()) {
-            // Create new message dari user
+            // Buat pesan user
             Message newMessage = new Message(
                     String.valueOf(System.currentTimeMillis()),
                     currentUserId,
@@ -138,41 +146,40 @@ public class chatFragment extends Fragment {
                     true
             );
 
-            // Add to list dan update adapter
             messageList.add(newMessage);
             chatAdapter.notifyItemInserted(messageList.size() - 1);
-
-            // Clear input field
             etMessage.setText("");
-
-            // Scroll to bottom
             rvChatMessages.scrollToPosition(messageList.size() - 1);
 
-            // JAGA KEYBOARD TETAP TERBUKA SETELAH KIRIM PESAN
+            // Jaga keyboard tetap terbuka
             etMessage.requestFocus();
             InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.showSoftInput(etMessage, InputMethodManager.SHOW_IMPLICIT);
             }
 
-            // Simulasikan balasan bot (nanti bisa diganti dengan AI chatbot)
-            simulateBotResponse(messageContent);
+            // Dapatkan respons dari Gemini AI
+            getGeminiResponse(messageContent);
         }
     }
 
-    private void simulateBotResponse(String userMessage) {
-        // Simulasi response bot sederhana
-        String botResponse = generateBotResponse(userMessage);
+    private void getGeminiResponse(String userMessage) {
+        // Tampilkan typing indicator
+        showTypingIndicator();
 
-        // Delay sedikit untuk simulasi typing
-        btnSend.postDelayed(new Runnable() {
+        // Panggil Gemini API - PERBAIKI BAGIAN INI
+        geminiService.getHRDResponse(userMessage, new GeminiService.GeminiCallback() {
             @Override
-            public void run() {
+            public void onSuccess(String response) {
+                // Sembunyikan typing indicator
+                hideTypingIndicator();
+
+                // Tambahkan respons AI
                 Message botMessage = new Message(
-                        String.valueOf(System.currentTimeMillis() + 1),
+                        String.valueOf(System.currentTimeMillis()),
                         "bot",
-                        "Karirku Assistant",
-                        botResponse,
+                        "HRD Assistant",
+                        response,
                         Calendar.getInstance(),
                         false
                 );
@@ -181,22 +188,55 @@ public class chatFragment extends Fragment {
                 chatAdapter.notifyItemInserted(messageList.size() - 1);
                 rvChatMessages.scrollToPosition(messageList.size() - 1);
             }
-        }, 1000);
+
+            @Override
+            public void onError(String error) {
+                // Sembunyikan typing indicator
+                hideTypingIndicator();
+
+                // Tampilkan pesan error yang user-friendly
+                Message errorMessage = new Message(
+                        String.valueOf(System.currentTimeMillis()),
+                        "bot",
+                        "HRD Assistant",
+                        "⚠️ Maaf, saat ini saya sedang mengalami gangguan.\n\n" +
+                                "Silakan coba lagi dalam beberapa saat atau gunakan fitur lain di aplikasi Karirku.",
+                        Calendar.getInstance(),
+                        false
+                );
+
+                messageList.add(errorMessage);
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                rvChatMessages.scrollToPosition(messageList.size() - 1);
+            }
+        });
     }
 
-    private String generateBotResponse(String userMessage) {
-        String lowerMessage = userMessage.toLowerCase();
+    private void showTypingIndicator() {
+        // Hapus typing indicator sebelumnya jika ada
+        hideTypingIndicator();
 
-        if (lowerMessage.contains("hallo") || lowerMessage.contains("hai") || lowerMessage.contains("hi")) {
-            return "Halo! Ada yang bisa saya bantu hari ini?";
-        } else if (lowerMessage.contains("lowongan") || lowerMessage.contains("kerja") || lowerMessage.contains("job")) {
-            return "Saya bisa membantu mencari lowongan kerja yang sesuai dengan keahlian Anda. Coba gunakan fitur Scan CV untuk rekomendasi yang lebih personal!";
-        } else if (lowerMessage.contains("cv") || lowerMessage.contains("scan")) {
-            return "Fitur Scan CV ada di menu bawah. Upload CV Anda untuk mendapatkan rekomendasi lowongan yang cocok!";
-        } else if (lowerMessage.contains("terima kasih") || lowerMessage.contains("thanks")) {
-            return "Sama-sama! Semoga sukses dengan perjalanan karier Anda 🚀";
-        } else {
-            return "Terima kasih atas pesannya! Untuk bantuan lebih spesifik mengenai lowongan kerja, silakan coba fitur Scan CV atau jelaskan kebutuhan Anda.";
+        typingMessage = new Message(
+                "typing",
+                "bot",
+                "HRD Assistant",
+                "HRD Assistant sedang mengetik...",
+                Calendar.getInstance(),
+                false
+        );
+
+        messageList.add(typingMessage);
+        typingMessagePosition = messageList.size() - 1;
+        chatAdapter.notifyItemInserted(typingMessagePosition);
+        rvChatMessages.scrollToPosition(typingMessagePosition);
+    }
+
+    private void hideTypingIndicator() {
+        if (typingMessage != null && typingMessagePosition != -1) {
+            messageList.remove(typingMessagePosition);
+            chatAdapter.notifyItemRemoved(typingMessagePosition);
+            typingMessage = null;
+            typingMessagePosition = -1;
         }
     }
 }

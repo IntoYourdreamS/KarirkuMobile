@@ -49,6 +49,13 @@ dependencies {
     implementation("com.jakewharton.timber:timber:5.0.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 
+    // Gemini AI Dependencies
+    implementation("com.google.ai.client.generativeai:generativeai:0.3.0")
+
+    // Optional: Untuk HTTP logging
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    implementation("com.google.guava:guava:31.0.1-android")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

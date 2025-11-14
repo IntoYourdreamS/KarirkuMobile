@@ -131,6 +131,6 @@
         android:layout_height="24dp"
         android:layout_gravity="top"
         android:contentDescription="@string/save_job"
-        android:src="@drawable/icsimpan" />
+        android:src="@drawable/ic_simpan" />
 
 </LinearLayout>

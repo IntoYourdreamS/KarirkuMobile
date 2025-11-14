@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
                 // Setup login logic setelah splash selesai
                 setupLoginLogic();
             }
-        }, 1300 ); // 1 DETIK
+        }, 1000); // 1 DETIK
     }
 
     private void setupLoginLogic() {

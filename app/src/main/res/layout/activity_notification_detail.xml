@@ -46,7 +46,7 @@
             android:id="@+id/imgDetailIcon"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/notification"
+            android:src="@drawable/ic_notifikasi"
             android:layout_gravity="center_horizontal" />
 
         <TextView

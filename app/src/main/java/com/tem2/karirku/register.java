@@ -55,10 +55,10 @@ public class register extends AppCompatActivity {
     private void togglePasswordVisibility() {
         if (isPasswordVisible) {
             edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-            imgTogglePassword.setImageResource(R.drawable.eyeoff);
+            imgTogglePassword.setImageResource(R.drawable.ic_eyeoff);
         } else {
             edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-            imgTogglePassword.setImageResource(R.drawable.eyeon);
+            imgTogglePassword.setImageResource(R.drawable.ic_eyeon);
         }
         edtPassword.setSelection(edtPassword.getText().length());
         isPasswordVisible = !isPasswordVisible;

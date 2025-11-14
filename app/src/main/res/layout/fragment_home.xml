@@ -16,7 +16,7 @@
             android:id="@+id/imglogo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:src="@drawable/logo"
+            android:src="@drawable/ic_logo"
             android:layout_marginLeft="24dp" />
 
         <View
@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginRight="24dp"
-            android:src="@drawable/notification" />
+            android:src="@drawable/ic_notifikasi" />
 
         <ImageView
             android:id="@+id/imgprofile"
@@ -68,7 +68,7 @@
             android:layout_height="20dp"
             android:layout_marginTop="5dp"
             android:layout_marginRight="12dp"
-            android:src="@drawable/search" />
+            android:src="@drawable/ic_search" />
 
         <EditText
             android:id="@+id/searchEditText"
@@ -87,7 +87,7 @@
             android:layout_height="20dp"
             android:layout_marginLeft="12dp"
             android:layout_marginTop="5dp"
-            android:src="@drawable/filter" />
+            android:src="@drawable/ic_filter" />
     </LinearLayout>
 
     <LinearLayout

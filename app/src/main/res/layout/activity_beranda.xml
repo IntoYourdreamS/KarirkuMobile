@@ -37,7 +37,7 @@
                 android:id="@+id/icon_home"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/home" />
+                android:src="@drawable/ic_home" />
 
             <TextView
                 android:id="@+id/text_home"
@@ -64,7 +64,7 @@
                 android:id="@+id/icon_scan"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/scan" />
+                android:src="@drawable/ic_scancv" />
 
             <TextView
                 android:id="@+id/text_scan"
@@ -91,13 +91,13 @@
                 android:id="@+id/icon_chat"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/message" />
+                android:src="@drawable/ic_chat" />
 
             <TextView
                 android:id="@+id/text_chat"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chat"
+                android:text="Chatbot"
                 android:textSize="10sp"
                 android:layout_marginTop="4dp"
                 android:fontFamily="@font/interdisplaybold" />
@@ -118,7 +118,7 @@
                 android:id="@+id/icon_profile"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/profile" />
+                android:src="@drawable/ic_profil" />
 
             <TextView
                 android:id="@+id/text_profile"

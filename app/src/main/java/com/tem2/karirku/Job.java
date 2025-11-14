@@ -1,6 +1,8 @@
 package com.tem2.karirku;
 
-public class Job {
+import java.io.Serializable;
+
+public class Job implements Serializable { // ✅ TAMBAHIN implements Serializable
     private String companyName;
     private String location;
     private String jobTitle;

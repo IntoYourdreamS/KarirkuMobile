@@ -28,8 +28,10 @@
                 android:id="@+id/imgProfile"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:src="@drawable/ic_profile_placeholder"
-                android:scaleType="centerCrop" />
+
+
+                android:scaleType="centerCrop"
+                android:padding="2dp" />
 
             <LinearLayout
                 android:id="@+id/layoutNama"

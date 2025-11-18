@@ -55,6 +55,9 @@ dependencies {
     // Optional: Untuk HTTP logging
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation("com.google.guava:guava:31.0.1-android")
+    implementation("com.github.bumptech.glide:glide:4.15.1")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

@@ -1,7 +1,6 @@
 package com.tem2.karirku;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,10 +18,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
@@ -39,20 +38,32 @@ public class NotificationFragment extends Fragment {
     private NotificationAdapter notificationAdapter;
     private List<NotificationItem> notificationList = new ArrayList<>();
     private SwipeRefreshLayout swipeRefresh;
-    private Handler pollingHandler;
-    private Runnable pollingRunnable;
+    private SessionManager sessionManager;
 
     private static final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co";
     private static final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
-
-    private int currentUserId = 2;
-    private static final long POLLING_INTERVAL = 10000; // 10 detik
-    private String lastPollingTime = "2024-01-01T00:00:00";
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_notification, container, false);
+
+        Log.d("NOTIFICATION", "========================================");
+        Log.d("NOTIFICATION", "📱 NotificationFragment loaded");
+        Log.d("NOTIFICATION", "========================================");
+
+        // ✅ Initialize SessionManager
+        sessionManager = new SessionManager(requireContext());
+
+        // Check if user logged in
+        if (!sessionManager.isLoggedIn()) {
+            Log.e("NOTIFICATION", "❌ User not logged in!");
+            Toast.makeText(getContext(), "Session expired, please login", Toast.LENGTH_SHORT).show();
+            return view;
+        }
+
+        Log.d("NOTIFICATION", "✅ User logged in: " + sessionManager.getUserName());
+        Log.d("NOTIFICATION", "   User ID: " + sessionManager.getUserId());
 
         rvNotifications = view.findViewById(R.id.rvNotifications);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
@@ -62,42 +73,61 @@ public class NotificationFragment extends Fragment {
         rvNotifications.setAdapter(notificationAdapter);
 
         TextView tvMarkAllRead = view.findViewById(R.id.tvMarkAllRead);
-        tvMarkAllRead.setOnClickListener(v -> markAllAsRead());
+        tvMarkAllRead.setOnClickListener(v -> {
+            markAllAsRead();
+        });
 
-        swipeRefresh.setOnRefreshListener(this::loadNotifications);
+        // Pull to refresh
+        swipeRefresh.setOnRefreshListener(() -> {
+            loadNotifications();
+        });
 
+        // Load notifications
         loadNotifications();
-        startPolling();
 
         return view;
     }
 
     private void loadNotifications() {
+        // ✅ Get user ID from SessionManager
+        int currentUserId = sessionManager.getUserId();
+
+        if (currentUserId == 0) {
+            Log.e("NOTIFICATION", "❌ User ID is 0, session invalid");
+            Toast.makeText(getContext(), "Session expired, please login again", Toast.LENGTH_SHORT).show();
+            swipeRefresh.setRefreshing(false);
+            return;
+        }
+
+        Log.d("NOTIFICATION", "📥 Loading notifications for user ID: " + currentUserId);
+
+        // URL dengan filter user_id dan order by created
         String url = SUPABASE_URL + "/rest/v1/notifikasi" +
                 "?id_pengguna=eq." + currentUserId +
                 "&select=*" +
                 "&order=dibuat_pada.desc";
 
-        Log.d("NOTIFICATION", "Loading from: " + url);
+        Log.d("NOTIFICATION", "Request URL: " + url);
 
         RequestQueue queue = Volley.newRequestQueue(requireContext());
 
         JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null,
                 response -> {
+                    Log.d("NOTIFICATION", "✅ Response received: " + response.length() + " items");
                     notificationList.clear();
                     parseNotifications(response);
                     notificationAdapter.notifyDataSetChanged();
                     swipeRefresh.setRefreshing(false);
 
-                    // Update last polling time setelah load berhasil
-                    if (!notificationList.isEmpty()) {
-                        updateLastPollingTime();
+                    if (notificationList.isEmpty()) {
+                        Toast.makeText(getContext(), "Tidak ada notifikasi", Toast.LENGTH_SHORT).show();
                     }
-
-                    Log.d("NOTIFICATION", "✅ Loaded " + notificationList.size() + " notifications");
                 },
                 error -> {
-                    Log.e("NOTIFICATION", "❌ Error: " + error.toString());
+                    Log.e("NOTIFICATION", "❌ Error loading notifications: " + error.toString());
+                    if (error.networkResponse != null) {
+                        Log.e("NOTIFICATION", "Status code: " + error.networkResponse.statusCode);
+                    }
                     Toast.makeText(getContext(), "Gagal memuat notifikasi", Toast.LENGTH_SHORT).show();
                     swipeRefresh.setRefreshing(false);
                 }) {
@@ -119,36 +149,38 @@ public class NotificationFragment extends Fragment {
                 JSONObject obj = response.getJSONObject(i);
 
                 String id = obj.optString("id_notifikasi");
+                String title = obj.optString("judul", "Notifikasi");
                 String message = obj.optString("pesan", "");
                 String type = obj.optString("tipe", "general");
-                boolean isRead = obj.optBoolean("sudah_dibaca", false);
+                boolean isRead = obj.optBoolean("is_read", false);
                 String createdAt = obj.optString("dibuat_pada", "");
 
+                // Format waktu
                 String timeAgo = formatTimeAgo(createdAt);
+
+                // Icon berdasarkan tipe
                 int iconRes = getIconForType(type);
 
                 NotificationItem item = new NotificationItem(
-                        id,
-                        type.toUpperCase(Locale.ROOT),
-                        message,
-                        timeAgo,
-                        type,
-                        isRead,
-                        iconRes
+                        id, title, message, timeAgo, type, isRead, iconRes
                 );
 
                 notificationList.add(item);
+
+                Log.d("NOTIFICATION", "  - " + title + " (" + timeAgo + ")");
             }
 
-            Log.d("NOTIFICATION", "Parsed " + notificationList.size() + " notifikasi");
+            Log.d("NOTIFICATION", "📊 Parsed " + notificationList.size() + " notifications");
+
         } catch (Exception e) {
-            Log.e("NOTIFICATION", "Parse error: " + e.getMessage());
+            Log.e("NOTIFICATION", "❌ Parse error: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private String formatTimeAgo(String timestamp) {
         try {
+            // Parse timestamp from Supabase (format: 2024-11-06T14:30:00)
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
             Date date = sdf.parse(timestamp);
 
@@ -160,15 +192,20 @@ public class NotificationFragment extends Fragment {
             long hours = minutes / 60;
             long days = hours / 24;
 
-            if (seconds < 60) return "Baru saja";
-            else if (minutes < 60) return minutes + " menit lalu";
-            else if (hours < 24) return hours + " jam lalu";
-            else if (days < 7) return days + " hari lalu";
-            else {
+            if (seconds < 60) {
+                return "Baru saja";
+            } else if (minutes < 60) {
+                return minutes + " menit lalu";
+            } else if (hours < 24) {
+                return hours + " jam lalu";
+            } else if (days < 7) {
+                return days + " hari lalu";
+            } else {
                 SimpleDateFormat displayFormat = new SimpleDateFormat("dd MMM yyyy", new Locale("id", "ID"));
                 return displayFormat.format(date);
             }
         } catch (Exception e) {
+            Log.e("NOTIFICATION", "Date parse error: " + e.getMessage());
             return "Baru saja";
         }
     }
@@ -192,88 +229,45 @@ public class NotificationFragment extends Fragment {
     }
 
     private void markAllAsRead() {
-        String url = SUPABASE_URL + "/rest/v1/notifikasi?id_pengguna=eq." + currentUserId;
+        // ✅ Get user ID from SessionManager
+        int currentUserId = sessionManager.getUserId();
 
-        JSONObject updateBody = new JSONObject();
+        if (currentUserId == 0) {
+            Toast.makeText(getContext(), "Session invalid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Log.d("NOTIFICATION", "📝 Marking all notifications as read for user: " + currentUserId);
+
+        // Call Supabase function
+        String url = SUPABASE_URL + "/rest/v1/rpc/mark_all_notifications_read";
+
+        JSONObject body = new JSONObject();
         try {
-            updateBody.put("sudah_dibaca", true);
-        } catch (JSONException e) {
+            body.put("user_id", currentUserId);
+        } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
 
         RequestQueue queue = Volley.newRequestQueue(requireContext());
-        com.android.volley.toolbox.JsonObjectRequest request = new com.android.volley.toolbox.JsonObjectRequest(
-                Request.Method.PATCH,
-                url,
-                updateBody,
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body,
                 response -> {
-                    Log.d("NOTIFICATION", "✅ Semua notifikasi ditandai dibaca");
+                    Log.d("NOTIFICATION", "✅ All notifications marked as read");
                     notificationAdapter.markAllAsRead();
-                    Toast.makeText(getContext(), "Semua notifikasi telah dibaca", Toast.LENGTH_SHORT).show();
-                },
-                error -> Log.e("NOTIFICATION", "❌ Error mark all read: " + error.toString())
-        ) {
-            @Override
-            public Map<String, String> getHeaders() {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("apikey", SUPABASE_API_KEY);
-                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
-                headers.put("Content-Type", "application/json");
-                headers.put("Prefer", "return=minimal");
-                return headers;
-            }
-        };
-
-        queue.add(request);
-    }
-
-    // 🔄 POLLING SYSTEM
-    private void startPolling() {
-        pollingHandler = new Handler();
-        pollingRunnable = new Runnable() {
-            @Override
-            public void run() {
-                checkNewNotifications();
-                pollingHandler.postDelayed(this, POLLING_INTERVAL);
-            }
-        };
-        pollingHandler.postDelayed(pollingRunnable, POLLING_INTERVAL);
-        Log.d("POLLING", "🔄 Polling started every " + POLLING_INTERVAL + "ms");
-    }
-
-    private void checkNewNotifications() {
-        String url = SUPABASE_URL + "/rest/v1/notifikasi" +
-                "?id_pengguna=eq." + currentUserId +
-                "&dibuat_pada=gt." + lastPollingTime +
-                "&select=*" +
-                "&order=dibuat_pada.desc";
-
-        Log.d("POLLING", "Checking new notifications since: " + lastPollingTime);
-
-        RequestQueue queue = Volley.newRequestQueue(requireContext());
-
-        JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null,
-                response -> {
-                    try {
-                        if (response.length() > 0) {
-                            Log.d("POLLING", "🎯 Found " + response.length() + " new notifications");
-                            parseNewNotifications(response);
-
-                            // Update last polling time ke waktu sekarang
-                            updateLastPollingTimeToNow();
-                        }
-                    } catch (Exception e) {
-                        Log.e("POLLING", "Error checking new notifications: " + e.getMessage());
-                    }
+                    Toast.makeText(getContext(), "✅ Semua notifikasi ditandai dibaca", Toast.LENGTH_SHORT).show();
                 },
                 error -> {
-                    // Silent error untuk polling
+                    Log.e("NOTIFICATION", "❌ Error marking as read: " + error.toString());
+                    Toast.makeText(getContext(), "Gagal menandai notifikasi", Toast.LENGTH_SHORT).show();
                 }) {
             @Override
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("apikey", SUPABASE_API_KEY);
                 headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
                 return headers;
             }
         };
@@ -281,93 +275,11 @@ public class NotificationFragment extends Fragment {
         queue.add(request);
     }
 
-    private void parseNewNotifications(JSONArray newNotifications) {
-        try {
-            for (int i = 0; i < newNotifications.length(); i++) {
-                JSONObject obj = newNotifications.getJSONObject(i);
-
-                String id = obj.optString("id_notifikasi");
-                String message = obj.optString("pesan", "");
-                String type = obj.optString("tipe", "general");
-                String createdAt = obj.optString("dibuat_pada", "");
-
-                // Cek duplikat
-                boolean isDuplicate = false;
-                for (NotificationItem item : notificationList) {
-                    if (item.getId().equals(id)) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-
-                if (!isDuplicate) {
-                    NotificationItem newItem = new NotificationItem(
-                            id,
-                            type.toUpperCase(Locale.ROOT),
-                            message,
-                            "Baru saja",
-                            type,
-                            false,
-                            getIconForType(type)
-                    );
-
-                    // Tambah ke list dan update UI
-                    notificationList.add(0, newItem);
-                    notificationAdapter.notifyItemInserted(0);
-                    rvNotifications.scrollToPosition(0);
-
-                    // Show toast
-                    Toast.makeText(getContext(), "🔔 " + message, Toast.LENGTH_SHORT).show();
-                    Log.d("POLLING", "✅ New notification: " + message);
-                }
-            }
-        } catch (Exception e) {
-            Log.e("POLLING", "Error parsing new notifications: " + e.getMessage());
-        }
-    }
-
-    private void updateLastPollingTime() {
-        // Update ke waktu notifikasi terbaru
-        if (!notificationList.isEmpty()) {
-            // Ambil timestamp dari notifikasi terbaru (index 0)
-            lastPollingTime = getCurrentTimestamp();
-        }
-    }
-
-    private void updateLastPollingTimeToNow() {
-        lastPollingTime = getCurrentTimestamp();
-    }
-
-    private String getCurrentTimestamp() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-        return sdf.format(new Date());
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        stopPolling();
-    }
-
     @Override
     public void onResume() {
         super.onResume();
-        if (pollingHandler == null) {
-            startPolling();
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        stopPolling();
-    }
-
-    private void stopPolling() {
-        if (pollingHandler != null && pollingRunnable != null) {
-            pollingHandler.removeCallbacks(pollingRunnable);
-            pollingHandler = null;
-            Log.d("POLLING", "🛑 Polling stopped");
-        }
+        // Refresh saat fragment visible lagi
+        Log.d("NOTIFICATION", "♻️ Fragment resumed, refreshing...");
+        loadNotifications();
     }
 }

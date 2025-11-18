@@ -33,10 +33,10 @@
 
         <ImageView
             android:id="@+id/imgprofile"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/imageprofile"
-            android:layout_marginRight="24dp" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginRight="24dp"
+            android:scaleType="centerCrop" />
     </LinearLayout>
 
     <!-- Judul -->
@@ -50,7 +50,7 @@
         android:fontFamily="@font/interdisplaybold"
         android:textColor="@color/blue" />
 
-
+    <!-- SEARCH BAR -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -90,6 +90,7 @@
             android:src="@drawable/ic_filter" />
     </LinearLayout>
 
+    <!-- TABS -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -110,7 +111,6 @@
             android:textColor="@color/blue"
             android:textSize="14sp"
             android:fontFamily="@font/interdisplaybold" />
-
 
         <TextView
             android:id="@+id/tab_terbaru"
@@ -139,6 +139,7 @@
             android:fontFamily="@font/interdisplaybold" />
     </LinearLayout>
 
+    <!-- REKOMENDASI HEADER -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -175,7 +176,7 @@
             android:gravity="end" />
     </LinearLayout>
 
-    <!-- Daftar Job -->
+    <!-- RECYCLERVIEW JOBS -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerJobs"
         android:layout_width="match_parent"

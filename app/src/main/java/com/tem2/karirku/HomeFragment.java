@@ -20,6 +20,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.Volley;
+import com.bumptech.glide.Glide;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -39,6 +40,7 @@ public class HomeFragment extends Fragment {
     private List<Job> jobList = new ArrayList<>();
     private List<Job> filteredJobList = new ArrayList<>();
     private EditText searchEditText;
+    private ImageView imgProfile;
 
     private TextView tabSemua, tabTerbaru, tabTerlama;
     private String currentSearchQuery = "";
@@ -58,11 +60,11 @@ public class HomeFragment extends Fragment {
         tabSemua = view.findViewById(R.id.tab_semua);
         tabTerbaru = view.findViewById(R.id.tab_terbaru);
         tabTerlama = view.findViewById(R.id.tab_terlama);
+        imgProfile = view.findViewById(R.id.imgprofile);
 
         jobAdapter = new JobAdapter(getContext(), filteredJobList);
         recyclerJobs.setAdapter(jobAdapter);
 
-        // ✅ TAMBAHAN: Click listener untuk icon notifikasi
         ImageView imgNotif = view.findViewById(R.id.imgnotif);
         imgNotif.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,6 +75,7 @@ public class HomeFragment extends Fragment {
 
         loadLowonganFromAPI();
         setupSearchListener();
+        loadProfileImage();
 
         View.OnClickListener tabClickListener = v -> {
             resetTabs();
@@ -99,6 +102,16 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
+    private void loadProfileImage() {
+        // Langsung load dari URL yang pasti ada
+        String fullUrl = "https://tkjnbelcgfwpbhppsnrl.supabase.co/storage/v1/object/public/profile/IMG_1462.JPG";
+
+        Glide.with(this)
+                .load(fullUrl)
+                .circleCrop()
+                .into(imgProfile);
+    }
+
     private void openNotificationFragment() {
         NotificationFragment notificationFragment = new NotificationFragment();
         getParentFragmentManager().beginTransaction()
@@ -107,12 +120,10 @@ public class HomeFragment extends Fragment {
                 .commit();
     }
 
-    // 🔍 Setup Real-time Search
     private void setupSearchListener() {
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // Not needed
             }
 
             @Override
@@ -123,17 +134,14 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-                // Not needed
             }
         });
     }
 
-    // 🔍 Perform Search dengan keyword
     private void performSearch(String query) {
         filteredJobList.clear();
 
         if (query.isEmpty()) {
-            // Jika search kosong, gunakan filter CV atau tampilkan semua
             filterJobsByKeywords();
             return;
         }
@@ -143,22 +151,17 @@ public class HomeFragment extends Fragment {
         String queryLower = query.toLowerCase(Locale.ROOT);
 
         for (Job job : jobList) {
-            // Cek di judul, kategori, perusahaan, dan lokasi
             boolean matchJudul = job.getJobTitle().toLowerCase(Locale.ROOT).contains(queryLower);
             boolean matchKategori = job.getTag1().toLowerCase(Locale.ROOT).contains(queryLower);
             boolean matchPerusahaan = job.getCompanyName().toLowerCase(Locale.ROOT).contains(queryLower);
             boolean matchLokasi = job.getLocation().toLowerCase(Locale.ROOT).contains(queryLower);
 
-            // Smart match via KeywordMapper
             boolean smartMatchKategori = KeywordMapper.isRelated(query, job.getTag1());
             boolean smartMatchJudul = KeywordMapper.isRelated(query, job.getJobTitle());
 
             if (matchJudul || matchKategori || matchPerusahaan || matchLokasi ||
                     smartMatchKategori || smartMatchJudul) {
                 filteredJobList.add(job);
-
-                Log.d("SEARCH_DEBUG", "✅ Found: " + job.getJobTitle() +
-                        " (" + job.getTag1() + ")");
             }
         }
 
@@ -188,7 +191,6 @@ public class HomeFragment extends Fragment {
                     jobList.clear();
                     parseResponse(response);
 
-                    // 🔍 Cek apakah ada keyword dari CV scan ATAU search query
                     if (currentSearchQuery.isEmpty()) {
                         filterJobsByKeywords();
                     } else {
@@ -225,8 +227,6 @@ public class HomeFragment extends Fragment {
                 String kategori = obj.optString("kategori", "-");
                 String tipe = obj.optString("tipe_pekerjaan", "-");
                 String gaji = obj.optString("gaji_range", "-");
-                String deskripsi = obj.optString("deskripsi", "-");
-                String requirements = obj.optString("requirements", "-");
 
                 Job job = new Job(
                         obj.optString("nama_perusahaan", "Perusahaan"),
@@ -241,13 +241,6 @@ public class HomeFragment extends Fragment {
 
                 jobList.add(job);
 
-                // 📝 LOG untuk debug - lihat data yang masuk
-                Log.d("JOB_DATA", "Job #" + (i+1) +
-                        "\n  Judul: " + judul +
-                        "\n  Kategori: " + kategori +
-                        "\n  Tipe: " + tipe +
-                        "\n  Perusahaan: " + job.getCompanyName());
-
             } catch (JSONException e) {
                 Log.e("JSON_ERROR", "Parsing gagal: " + e.getMessage());
             }
@@ -256,7 +249,6 @@ public class HomeFragment extends Fragment {
         Log.d("SUPABASE_DATA", "✅ Berhasil parsing " + jobList.size() + " lowongan");
     }
 
-    // 🔍 Filter lowongan berdasarkan keyword dari CV (digunakan saat search kosong)
     private void filterJobsByKeywords() {
         CVKeywordManager keywordManager = CVKeywordManager.getInstance();
 
@@ -270,10 +262,8 @@ public class HomeFragment extends Fragment {
                 boolean isMatch = false;
 
                 for (String keyword : keywords) {
-                    // 🎯 Cek di JUDUL, KATEGORI, TAG1, TAG2, TAG3
                     if (matchesKeyword(job, keyword)) {
                         isMatch = true;
-                        Log.d("FILTER_DEBUG", "✅ Match: " + job.getJobTitle() + " dengan keyword: " + keyword);
                         break;
                     }
                 }
@@ -283,64 +273,33 @@ public class HomeFragment extends Fragment {
                 }
             }
 
-            // 📊 Hasil filtering
-            Log.d("FILTER_DEBUG", "Total lowongan: " + jobList.size() + ", Filtered: " + filteredJobList.size());
-
             if (filteredJobList.isEmpty()) {
                 Toast.makeText(getContext(), "❌ Tidak ada lowongan yang cocok dengan keyword CV.\nMenampilkan semua lowongan.", Toast.LENGTH_LONG).show();
-                filteredJobList.addAll(jobList); // Tampilkan semua jika tidak ada yang cocok
+                filteredJobList.addAll(jobList);
             } else {
                 String matchInfo = "✅ Ditemukan " + filteredJobList.size() + " lowongan cocok dari " + jobList.size() + " total";
                 Toast.makeText(getContext(), matchInfo, Toast.LENGTH_SHORT).show();
-                Log.d("FILTER_DEBUG", matchInfo);
             }
         } else {
-            // Jika belum scan CV, tampilkan semua
-            Log.d("FILTER_DEBUG", "Tidak ada keyword CV, tampilkan semua lowongan");
             filteredJobList.addAll(jobList);
         }
 
         jobAdapter.setData(filteredJobList);
     }
 
-    // 🔍 Cek apakah job cocok dengan keyword (untuk CV filter)
     private boolean matchesKeyword(Job job, String keyword) {
         String keywordLower = keyword.toLowerCase(Locale.ROOT).trim();
-
-        // 🎯 Yang paling penting: Tag1 adalah KATEGORI dari Supabase
-        // Tag2 = tipe_pekerjaan, Tag3 = mode kerja
         String kategoriLower = job.getTag1().toLowerCase(Locale.ROOT).trim();
         String judulLower = job.getJobTitle().toLowerCase(Locale.ROOT).trim();
 
-        // 1. Exact match di judul atau kategori
         boolean exactMatchJudul = judulLower.contains(keywordLower);
         boolean exactMatchKategori = kategoriLower.contains(keywordLower);
-
-        // 2. Smart match via KeywordMapper - CEK KATEGORI (Tag1) dulu!
         boolean smartMatchKategori = KeywordMapper.isRelated(keyword, job.getTag1());
         boolean smartMatchJudul = KeywordMapper.isRelated(keyword, job.getJobTitle());
 
-        boolean anyMatch = exactMatchJudul || exactMatchKategori || smartMatchKategori || smartMatchJudul;
-
-        // 📝 LOG untuk debug per job yang dicek
-        Log.d("MATCH_CHECK", "Checking Job: " + job.getJobTitle() +
-                " | Kategori: " + job.getTag1() +
-                " | Keyword: " + keyword +
-                " | Match: " + anyMatch);
-
-        if (anyMatch) {
-            Log.d("MATCH_DETAIL", "✅ MATCH FOUND!" +
-                    "\n  Job: " + job.getJobTitle() +
-                    "\n  Kategori: " + job.getTag1() +
-                    "\n  Keyword CV: " + keyword +
-                    "\n  Exact - Judul:" + exactMatchJudul + ", Kategori:" + exactMatchKategori +
-                    "\n  Smart - Judul:" + smartMatchJudul + ", Kategori:" + smartMatchKategori);
-        }
-
-        return anyMatch;
+        return exactMatchJudul || exactMatchKategori || smartMatchKategori || smartMatchJudul;
     }
 
-    // 🔄 Ambil list yang sudah difilter untuk sorting tab
     private List<Job> getCurrentFilteredList() {
         return new ArrayList<>(filteredJobList);
     }

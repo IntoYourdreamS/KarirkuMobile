@@ -9,6 +9,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -100,9 +101,12 @@ public class chatFragment extends Fragment {
             @Override
             public void run() {
                 etMessage.requestFocus();
-                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(etMessage, InputMethodManager.SHOW_IMPLICIT);
+                // ✅ PERBAIKAN: Gunakan requireContext() bukan getActivity()
+                if (getContext() != null) {
+                    InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.showSoftInput(etMessage, InputMethodManager.SHOW_IMPLICIT);
+                    }
                 }
             }
         }, 200);
@@ -153,9 +157,12 @@ public class chatFragment extends Fragment {
 
             // Jaga keyboard tetap terbuka
             etMessage.requestFocus();
-            InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.showSoftInput(etMessage, InputMethodManager.SHOW_IMPLICIT);
+            // ✅ PERBAIKAN: Gunakan requireContext() bukan getActivity()
+            if (getContext() != null) {
+                InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showSoftInput(etMessage, InputMethodManager.SHOW_IMPLICIT);
+                }
             }
 
             // Dapatkan respons dari Gemini AI
@@ -167,7 +174,7 @@ public class chatFragment extends Fragment {
         // Tampilkan typing indicator
         showTypingIndicator();
 
-        // Panggil Gemini API - PERBAIKI BAGIAN INI
+        // Panggil Gemini API
         geminiService.getHRDResponse(userMessage, new GeminiService.GeminiCallback() {
             @Override
             public void onSuccess(String response) {
@@ -208,6 +215,11 @@ public class chatFragment extends Fragment {
                 messageList.add(errorMessage);
                 chatAdapter.notifyItemInserted(messageList.size() - 1);
                 rvChatMessages.scrollToPosition(messageList.size() - 1);
+
+                // ✅ PERBAIKAN: Tambah null check untuk Toast
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

@@ -52,11 +52,15 @@ dependencies {
     // Gemini AI Dependencies
     implementation("com.google.ai.client.generativeai:generativeai:0.3.0")
 
+    implementation("com.nex3z:flow-layout:1.3.3")
+
     // Optional: Untuk HTTP logging
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation("com.google.guava:guava:31.0.1-android")
     implementation("com.github.bumptech.glide:glide:4.15.1")
     annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+
+
 
 
     testImplementation(libs.junit)

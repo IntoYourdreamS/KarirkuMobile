@@ -168,7 +168,10 @@ public class HomeFragment extends Fragment {
         Log.d("SEARCH_DEBUG", "📊 Found " + filteredJobList.size() + " results for '" + query + "'");
 
         if (filteredJobList.isEmpty()) {
-            Toast.makeText(getContext(), "Tidak ada hasil untuk \"" + query + "\"", Toast.LENGTH_SHORT).show();
+            // ✅ PERBAIKAN: Tambah null check untuk Toast
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Tidak ada hasil untuk \"" + query + "\"", Toast.LENGTH_SHORT).show();
+            }
         }
 
         jobAdapter.setData(filteredJobList);
@@ -199,7 +202,10 @@ public class HomeFragment extends Fragment {
                 },
                 error -> {
                     Log.e("API_ERROR", "Volley error: " + error.toString());
-                    Toast.makeText(getContext(), "Gagal memuat data: " + error.toString(), Toast.LENGTH_LONG).show();
+                    // ✅ PERBAIKAN: Tambah null check untuk Toast
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), "Gagal memuat data: " + error.toString(), Toast.LENGTH_LONG).show();
+                    }
                 }
         ) {
             @Override
@@ -274,11 +280,17 @@ public class HomeFragment extends Fragment {
             }
 
             if (filteredJobList.isEmpty()) {
-                Toast.makeText(getContext(), "❌ Tidak ada lowongan yang cocok dengan keyword CV.\nMenampilkan semua lowongan.", Toast.LENGTH_LONG).show();
+                // ✅ PERBAIKAN: Tambah null check untuk Toast
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "❌ Tidak ada lowongan yang cocok dengan keyword CV.\nMenampilkan semua lowongan.", Toast.LENGTH_LONG).show();
+                }
                 filteredJobList.addAll(jobList);
             } else {
                 String matchInfo = "✅ Ditemukan " + filteredJobList.size() + " lowongan cocok dari " + jobList.size() + " total";
-                Toast.makeText(getContext(), matchInfo, Toast.LENGTH_SHORT).show();
+                // ✅ PERBAIKAN: Tambah null check untuk Toast
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), matchInfo, Toast.LENGTH_SHORT).show();
+                }
             }
         } else {
             filteredJobList.addAll(jobList);

@@ -38,4 +38,6 @@ public class PdfViewerActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
 }
+

@@ -24,12 +24,13 @@
             android:gravity="center_vertical"
             android:layout_marginBottom="16dp">
 
-            <ImageView
+            <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/imgProfile"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:src="@drawable/ic_profile_placeholder"
-                android:scaleType="centerCrop" />
+
+                app:civ_border_width="2dp"
+                app:civ_border_color="#FFFFFF"/>
 
 
 

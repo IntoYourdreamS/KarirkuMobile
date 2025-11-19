@@ -48,17 +48,23 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.jakewharton.timber:timber:5.0.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
-
-    // Gemini AI Dependencies
     implementation("com.google.ai.client.generativeai:generativeai:0.3.0")
-
     implementation("com.nex3z:flow-layout:1.3.3")
-
-    // Optional: Untuk HTTP logging
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation("com.google.guava:guava:31.0.1-android")
     implementation("com.github.bumptech.glide:glide:4.15.1")
     annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+    // Supabase Storage
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.3.1")
+
+    // Ktor untuk networking
+    implementation("io.ktor:ktor-client-android:2.3.11")
+    implementation("io.ktor:ktor-client-okhttp:2.3.11")
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 
 
 

@@ -31,6 +31,15 @@
             android:textColor="@color/blue"/>
     </LinearLayout>
 
+    <!-- Tambahkan di bawah Header -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="16dp"
+        android:visibility="gone" />
+
     <!-- Upload CV -->
     <LinearLayout
         android:id="@+id/btnUploadCV"

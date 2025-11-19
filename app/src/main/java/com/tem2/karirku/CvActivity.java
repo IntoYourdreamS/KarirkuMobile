@@ -11,7 +11,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-
+import com.android.volley.DefaultRetryPolicy;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -110,6 +110,7 @@ public class CvActivity extends AppCompatActivity {
             selectedFileName = getFileName(selectedFileUri);
 
             Log.d("CV_UPLOAD", "📄 File selected: " + selectedFileName);
+            Log.d("CV_UPLOAD", "📄 File URI: " + selectedFileUri.toString());
 
             // Upload CV ke Supabase Storage
             uploadCVToStorage();
@@ -140,13 +141,16 @@ public class CvActivity extends AppCompatActivity {
         }
 
         showLoading(true);
+        Toast.makeText(this, "Mulai upload CV...", Toast.LENGTH_SHORT).show();
 
         // Upload in background thread
         new Thread(() -> {
             try {
                 // Generate unique filename
                 String timestamp = String.valueOf(System.currentTimeMillis());
-                String uniqueFileName = currentUserId + "_" + timestamp + "_" + selectedFileName;
+                String uniqueFileName = currentUserId + "_" + timestamp + "_" + selectedFileName.replace(" ", "_");
+
+                Log.d("CV_UPLOAD", "📤 Uploading file: " + uniqueFileName);
 
                 // Get file from URI
                 File file = getFileFromUri(selectedFileUri);
@@ -157,6 +161,8 @@ public class CvActivity extends AppCompatActivity {
                     });
                     return;
                 }
+
+                Log.d("CV_UPLOAD", "📁 File size: " + file.length() + " bytes");
 
                 // Upload to Supabase Storage
                 String cvUrl = uploadFileToSupabaseStorage(file, uniqueFileName);
@@ -177,7 +183,7 @@ public class CvActivity extends AppCompatActivity {
                 Log.e("CV_UPLOAD", "❌ Upload error: " + e.getMessage(), e);
                 runOnUiThread(() -> {
                     showLoading(false);
-                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
             }
         }).start();
@@ -186,10 +192,13 @@ public class CvActivity extends AppCompatActivity {
     private File getFileFromUri(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
-            if (inputStream == null) return null;
+            if (inputStream == null) {
+                Log.e("CV_UPLOAD", "❌ Cannot open input stream from URI");
+                return null;
+            }
 
             // Create temp file in cache
-            File tempFile = new File(getCacheDir(), selectedFileName);
+            File tempFile = new File(getCacheDir(), "temp_cv_" + System.currentTimeMillis());
             FileOutputStream outputStream = new FileOutputStream(tempFile);
 
             byte[] buffer = new byte[4096];
@@ -201,10 +210,12 @@ public class CvActivity extends AppCompatActivity {
             outputStream.close();
             inputStream.close();
 
+            Log.d("CV_UPLOAD", "📁 Temp file created: " + tempFile.getAbsolutePath() + " (" + tempFile.length() + " bytes)");
+
             return tempFile;
 
         } catch (Exception e) {
-            Log.e("CV_UPLOAD", "Error reading file: " + e.getMessage(), e);
+            Log.e("CV_UPLOAD", "❌ Error reading file: " + e.getMessage(), e);
             return null;
         }
     }
@@ -212,12 +223,16 @@ public class CvActivity extends AppCompatActivity {
     private String uploadFileToSupabaseStorage(File file, String fileName) {
         try {
             // Determine MIME type based on file extension
-            String mimeType = "application/pdf";
-            if (fileName.endsWith(".doc")) {
+            String mimeType = "application/octet-stream"; // Default MIME type
+            if (fileName.toLowerCase().endsWith(".pdf")) {
+                mimeType = "application/pdf";
+            } else if (fileName.toLowerCase().endsWith(".doc")) {
                 mimeType = "application/msword";
-            } else if (fileName.endsWith(".docx")) {
+            } else if (fileName.toLowerCase().endsWith(".docx")) {
                 mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             }
+
+            Log.d("CV_UPLOAD", "📤 Uploading to storage: " + fileName + " (" + mimeType + ")");
 
             // Create request body
             RequestBody fileBody = RequestBody.create(
@@ -228,7 +243,9 @@ public class CvActivity extends AppCompatActivity {
             // Upload URL
             String uploadUrl = SUPABASE_URL + "/storage/v1/object/" + BUCKET_NAME + "/" + fileName;
 
-            // Create request - gunakan ANON KEY karena RLS policy sudah di-set
+            Log.d("CV_UPLOAD", "🔗 Upload URL: " + uploadUrl);
+
+            // Create request
             okhttp3.Request request = new okhttp3.Request.Builder()
                     .url(uploadUrl)
                     .header("Authorization", "Bearer " + SUPABASE_API_KEY)
@@ -240,14 +257,29 @@ public class CvActivity extends AppCompatActivity {
             OkHttpClient client = new OkHttpClient();
             Response response = client.newCall(request).execute();
 
+            Log.d("CV_UPLOAD", "📨 Storage Response Code: " + response.code());
+            Log.d("CV_UPLOAD", "📨 Storage Response Message: " + response.message());
+
             if (response.isSuccessful()) {
                 // Return public URL
                 String publicUrl = SUPABASE_URL + "/storage/v1/object/public/" + BUCKET_NAME + "/" + fileName;
-                Log.d("CV_UPLOAD", "✅ File uploaded: " + publicUrl);
+                Log.d("CV_UPLOAD", "✅ File uploaded successfully: " + publicUrl);
                 return publicUrl;
             } else {
                 String error = response.body() != null ? response.body().string() : "Unknown error";
                 Log.e("CV_UPLOAD", "❌ Storage upload failed: " + error);
+                Log.e("CV_UPLOAD", "❌ Response Code: " + response.code());
+
+                // Check specific error codes
+                if (response.code() == 400) {
+                    Log.e("CV_UPLOAD", "❌ Bad Request - Check bucket configuration");
+                } else if (response.code() == 401) {
+                    Log.e("CV_UPLOAD", "❌ Unauthorized - Check API key");
+                } else if (response.code() == 403) {
+                    Log.e("CV_UPLOAD", "❌ Forbidden - Check bucket permissions");
+                } else if (response.code() == 413) {
+                    Log.e("CV_UPLOAD", "❌ File too large");
+                }
                 return null;
             }
 
@@ -258,68 +290,92 @@ public class CvActivity extends AppCompatActivity {
     }
 
     private void saveCvToDatabase(String fileName, String cvUrl) {
-        String url = SUPABASE_URL + "/rest/v1/cv";
+        new Thread(() -> {
+            try {
+                String url = SUPABASE_URL + "/rest/v1/cv";
 
-        JSONObject cvData = new JSONObject();
-        try {
-            // Kirim KEDUA kolom id
-            cvData.put("id_pencaker", currentUserId);  // Untuk backward compatibility
-            cvData.put("id_pengguna", currentUserId);  // Kolom baru
-            cvData.put("nama_file", fileName);
-            cvData.put("cv_url", cvUrl);
+                JSONObject cvData = new JSONObject();
+                cvData.put("id_pencaker", currentUserId);
+                cvData.put("id_pengguna", currentUserId);
+                cvData.put("nama_file", fileName);
+                cvData.put("cv_url", cvUrl);
 
-            Log.d("CV_UPLOAD", "📤 Saving to database: " + cvData.toString());
+                Log.d("CV_UPLOAD", "💾 Saving to database: " + cvData.toString());
 
-        } catch (JSONException e) {
-            Log.e("CV_UPLOAD", "❌ JSON Error: " + e.getMessage());
-            showLoading(false);
-            return;
-        }
+                RequestBody body = RequestBody.create(
+                        MediaType.parse("application/json"),
+                        cvData.toString()
+                );
 
-        RequestQueue queue = Volley.newRequestQueue(this);
-        JsonObjectRequest request = new JsonObjectRequest(
-                Request.Method.POST,
-                url,
-                cvData,
-                response -> {
-                    Log.d("CV_UPLOAD", "✅ CV saved successfully!");
-                    showLoading(false);
-                    Toast.makeText(CvActivity.this, "CV berhasil diupload!", Toast.LENGTH_SHORT).show();
-                    loadRiwayatCV();
-                },
-                error -> {
-                    Log.e("CV_UPLOAD", "❌ Upload failed: " + error.toString());
+                okhttp3.Request request = new okhttp3.Request.Builder()
+                        .url(url)
+                        .header("Authorization", "Bearer " + SUPABASE_API_KEY)
+                        .header("apikey", SUPABASE_API_KEY)
+                        .header("Content-Type", "application/json")
+                        .header("Prefer", "return=minimal")
+                        .post(body)
+                        .build();
 
-                    if (error.networkResponse != null && error.networkResponse.data != null) {
-                        String errorBody = new String(error.networkResponse.data);
-                        Log.e("CV_UPLOAD", "❌ Error response: " + errorBody);
-                    }
+                OkHttpClient client = new OkHttpClient();
+                Response response = client.newCall(request).execute();
 
-                    showLoading(false);
-                    Toast.makeText(CvActivity.this, "Gagal menyimpan CV ke database", Toast.LENGTH_SHORT).show();
+                Log.d("CV_UPLOAD", "📨 Database Response Code: " + response.code());
+                Log.d("CV_UPLOAD", "📨 Database Response Message: " + response.message());
+
+                // OkHttp handle 201 dengan benar
+                if (response.isSuccessful()) {
+                    Log.d("CV_UPLOAD", "✅ CV saved to database successfully!");
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(CvActivity.this, "✅ CV berhasil diupload!", Toast.LENGTH_LONG).show();
+
+                        selectedFileUri = null;
+                        selectedFileName = null;
+                        new android.os.Handler().postDelayed(() -> loadRiwayatCV(), 1000);
+                    });
+                } else {
+                    String errorBody = response.body() != null ? response.body().string() : "Unknown error";
+                    Log.e("CV_UPLOAD", "❌ Database save failed: " + errorBody);
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(CvActivity.this, "❌ Gagal menyimpan CV ke database", Toast.LENGTH_LONG).show();
+                    });
                 }
-        ) {
-            @Override
-            public Map<String, String> getHeaders() {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("apikey", SUPABASE_API_KEY);
-                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
-                headers.put("Content-Type", "application/json");
-                headers.put("Prefer", "return=representation");
-                return headers;
-            }
-        };
 
-        queue.add(request);
+            } catch (Exception e) {
+                Log.e("CV_UPLOAD", "❌ Database save exception: " + e.getMessage(), e);
+                runOnUiThread(() -> {
+                    showLoading(false);
+                    Toast.makeText(CvActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    // Method terpisah untuk handle success
+    private void handleUploadSuccess() {
+        runOnUiThread(() -> {
+            showLoading(false);
+            Toast.makeText(CvActivity.this, "✅ CV berhasil diupload!", Toast.LENGTH_LONG).show();
+
+            // Clear selection
+            selectedFileUri = null;
+            selectedFileName = null;
+
+            // Reload list CV
+            new android.os.Handler().postDelayed(() -> loadRiwayatCV(), 1000);
+        });
     }
 
     private void loadRiwayatCV() {
         showLoading(true);
 
         String url = SUPABASE_URL + "/rest/v1/cv" +
-                "?id_pencaker=eq." + currentUserId +
+                "?or=(id_pencaker.eq." + currentUserId + ",id_pengguna.eq." + currentUserId + ")" +
                 "&select=*" +
                 "&order=uploaded_at.desc";
+
+        Log.d("CV_LOAD", "🔍 Loading CV from: " + url);
 
         RequestQueue queue = Volley.newRequestQueue(this);
         JsonArrayRequest request = new JsonArrayRequest(
@@ -336,7 +392,7 @@ public class CvActivity extends AppCompatActivity {
                 error -> {
                     Log.e("CV_LOAD", "❌ Load failed: " + error.toString());
                     showLoading(false);
-                    Toast.makeText(CvActivity.this, "Gagal memuat CV", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CvActivity.this, "Gagal memuat riwayat CV", Toast.LENGTH_SHORT).show();
                 }
         ) {
             @Override
@@ -361,6 +417,8 @@ public class CvActivity extends AppCompatActivity {
 
                 CvModel cv = new CvModel(fileName, filePath);
                 list.add(cv);
+
+                Log.d("CV_PARSE", "📄 CV: " + fileName + " -> " + filePath);
             }
         } catch (JSONException e) {
             Log.e("CV_PARSE", "❌ Parse error: " + e.getMessage());

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
@@ -36,8 +37,16 @@ public class CvAdapter extends RecyclerView.Adapter<CvAdapter.ViewHolder> {
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, PdfViewerActivity.class);
             intent.putExtra("path", model.filePath);
+            intent.putExtra("fileName", model.fileName);
             context.startActivity(intent);
         });
+
+        // Optional: Add delete button
+        if (holder.btnDelete != null) {
+            holder.btnDelete.setOnClickListener(v -> {
+                // TODO: Implement delete CV
+            });
+        }
     }
 
     @Override
@@ -47,10 +56,12 @@ public class CvAdapter extends RecyclerView.Adapter<CvAdapter.ViewHolder> {
 
     class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvNamaCV;
+        ImageView btnDelete;
 
         public ViewHolder(View itemView) {
             super(itemView);
             tvNamaCV = itemView.findViewById(R.id.tvNamaCV);
+            btnDelete = itemView.findViewById(R.id.btnDelete);
         }
     }
 }

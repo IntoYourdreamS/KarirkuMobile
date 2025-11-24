@@ -8,7 +8,6 @@
     android:background="@color/white"
     tools:context=".MainActivity">
 
-    <!-- SPLASH SCREEN -->
     <ImageView
         android:id="@+id/splashScreen"
         android:layout_width="match_parent"

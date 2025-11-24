@@ -39,7 +39,6 @@
             android:scaleType="centerCrop" />
     </LinearLayout>
 
-    <!-- Judul -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -159,7 +158,14 @@
             android:textSize="18sp"
             android:fontFamily="@font/interdisplaybold"
             android:textColor="@color/blue"
-            android:gravity="start" />
+            android:gravity="start"
+
+            android:shadowColor="#50000000"
+            android:shadowDx="0"
+            android:shadowDy="3"
+            android:shadowRadius="4"
+            />
+
 
         <TextView
             android:id="@+id/seeAllText"
@@ -173,7 +179,12 @@
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
             android:padding="6dp"
-            android:gravity="end" />
+            android:gravity="end"
+
+            android:shadowColor="#50000000"
+            android:shadowDx="0"
+            android:shadowDy="3"
+            android:shadowRadius="4"/>
     </LinearLayout>
 
     <!-- RECYCLERVIEW JOBS -->

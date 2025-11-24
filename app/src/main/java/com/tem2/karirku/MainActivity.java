@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -111,6 +112,12 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, register.class);
             startActivity(intent);
         });
+
+        TextView lupaPassword = findViewById(R.id.textView2);
+        lupaPassword.setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, Emailubahpasword.class));
+        });
+
 
         // Toggle password visibility
         ImageView imgTogglePassword = findViewById(R.id.imgTogglePassword);

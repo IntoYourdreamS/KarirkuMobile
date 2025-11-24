@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:background="@color/white">
 
-
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -37,6 +37,7 @@
             android:gravity="center" />
     </LinearLayout>
 
+    <!-- ScrollView Content -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -181,7 +182,7 @@
                 android:id="@+id/tvJobDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Deskripsi lengkap pekerjaan akan ditampilkan di sini. Anda akan bertanggung jawab untuk mengembangkan aplikasi mobile dan bekerja dengan tim yang dinamis."
+                android:text="Deskripsi lengkap pekerjaan akan ditampilkan di sini."
                 android:textSize="14sp"
                 android:textColor="@color/black"
                 android:lineSpacingExtra="4dp"
@@ -201,7 +202,7 @@
                 android:id="@+id/tvRequirements"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="• Pengalaman 2+ tahun di Android Development\n• Menguasai Java/Kotlin\n• Memahami REST API\n• Memiliki portofolio project sebelumnya"
+                android:text="• Pengalaman 2+ tahun\n• Menguasai Java/Kotlin"
                 android:textSize="14sp"
                 android:textColor="@color/black"
                 android:lineSpacingExtra="4dp"
@@ -221,7 +222,7 @@
                 android:id="@+id/tvAdditionalInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="• Jenis: Full-time\n• Lokasi: Kantor Pusat\n• Waktu: Senin - Jumat, 09:00 - 17:00\n• Gaji: Dirahasiakan"
+                android:text="• Jenis: Full-time\n• Lokasi: Kantor Pusat"
                 android:textSize="14sp"
                 android:textColor="@color/black"
                 android:lineSpacingExtra="4dp"
@@ -230,58 +231,43 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Footer dengan Tombol Lamar -->
+    <!-- ✅ FIXED: Footer dengan 2 Button (WhatsApp & Lamar) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="16dp"
         android:background="@color/white"
         android:elevation="8dp">
 
-        <!-- Footer dengan Tombol WhatsApp & Lamar -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:background="@color/white"
-            android:elevation="8dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnWhatsApp"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Hubungi via WhatsApp"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:backgroundTint="#FFFFFF"
-                android:textColor="#25D366"
-                app:strokeColor="#25D366"
-                app:strokeWidth="1dp"
-                app:cornerRadius="5dp"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnApplywa"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Lamar pekerjaan ini"
-                android:textColor="@color/white"
-                android:backgroundTint="@color/blue"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/btnApply"
+        <!-- Button WhatsApp -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWhatsApp"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Lamar pekerjaan ini"
+            android:text="💬 Hubungi via WhatsApp"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:backgroundTint="#FFFFFF"
+            android:textColor="#25D366"
+            app:strokeColor="#25D366"
+            app:strokeWidth="2dp"
+            app:cornerRadius="8dp"
+            app:icon="@android:drawable/ic_menu_send"
+            app:iconTint="#25D366"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Button Lamar -->
+        <Button
+            android:id="@+id/btnApplywa"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="📄 Lamar Pekerjaan Ini"
             android:textColor="@color/white"
             android:backgroundTint="@color/blue"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textAllCaps="false" />
     </LinearLayout>
 
 </LinearLayout>

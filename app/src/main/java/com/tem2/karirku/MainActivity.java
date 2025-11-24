@@ -42,18 +42,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         Log.d("MAIN_ACTIVITY", "========================================");
-        Log.d("MAIN_ACTIVITY", "📱 MainActivity onCreate");
+        Log.d("MAIN_ACTIVITY", "ðŸ“± MainActivity onCreate");
         Log.d("MAIN_ACTIVITY", "========================================");
 
-        // ✅ Initialize SessionManager
+        // âœ… Initialize SessionManager
         sessionManager = new SessionManager(this);
 
-        // ✅ Check if already logged in
+        // âœ… Check if already logged in
         if (sessionManager.isLoggedIn()) {
-            Log.d("MAIN_ACTIVITY", "✅ User already logged in");
+            Log.d("MAIN_ACTIVITY", "âœ… User already logged in");
             Log.d("MAIN_ACTIVITY", "   User: " + sessionManager.getUserName());
             Log.d("MAIN_ACTIVITY", "   Email: " + sessionManager.getUserEmail());
-            Log.d("MAIN_ACTIVITY", "🔄 Redirecting to beranda...");
+            Log.d("MAIN_ACTIVITY", "ðŸ”„ Redirecting to beranda...");
 
             // Auto-redirect to beranda
             startActivity(new Intent(this, beranda.class));
@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        Log.d("MAIN_ACTIVITY", "❌ No active session, showing login screen");
+        Log.d("MAIN_ACTIVITY", "âŒ No active session, showing login screen");
 
         // Inisialisasi view untuk splash screen
         splashScreen = findViewById(R.id.splashScreen);
@@ -126,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // 🔹 LOGIN MANUAL VIA REST API
+    // LOGIN MANUAL VIA REST API
     private void loginManual(String email, String password) {
         String url = SUPABASE_URL + "/rest/v1/pengguna?email=eq." + email + "&select=*";
 
@@ -142,41 +142,39 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             JSONObject user = response.getJSONObject(0);
                             String pass = user.optString("password", "");
-                            boolean emailVerified = user.optBoolean("email_verified", false);
+
+                            // ⛔ HAPUS emailVerified karena kolomnya sudah tidak ada
+                            // boolean emailVerified = user.optBoolean("email_verified", false);
 
                             if (pass.equals(password)) {
-                                if (emailVerified) {
-                                    Log.d("LOGIN_DEBUG", "========================================");
-                                    Log.d("LOGIN_DEBUG", "✅ Login successful!");
-                                    Log.d("LOGIN_DEBUG", "========================================");
 
-                                    // ✅ Save user session dengan SessionManager
-                                    sessionManager.createSession(user);
+                                Log.d("LOGIN_DEBUG", "========================================");
+                                Log.d("LOGIN_DEBUG", "Login successful!");
+                                Log.d("LOGIN_DEBUG", "========================================");
 
-                                    Log.d("LOGIN_DEBUG", "✅ Session created for: " + user.optString("nama_lengkap"));
-                                    Log.d("LOGIN_DEBUG", "   User ID: " + user.optInt("id_pengguna"));
-                                    Log.d("LOGIN_DEBUG", "   Email: " + user.optString("email"));
-                                    Log.d("LOGIN_DEBUG", "🔄 Redirecting to beranda...");
+                                // ✔ Simpan session
+                                sessionManager.createSession(user);
 
-                                    Toast.makeText(this, "✅ Login berhasil!", Toast.LENGTH_SHORT).show();
-                                    startActivity(new Intent(this, beranda.class));
-                                    finish();
-                                } else {
-                                    Log.w("LOGIN_DEBUG", "⚠️ Email not verified");
-                                    Toast.makeText(this,
-                                            "⚠️ Email belum diverifikasi!\n\nSilakan cek inbox email Anda dan klik link verifikasi.",
-                                            Toast.LENGTH_LONG).show();
-                                }
+                                Log.d("LOGIN_DEBUG", "✔ Session created for: " + user.optString("nama_lengkap"));
+                                Log.d("LOGIN_DEBUG", "   User ID: " + user.optInt("id_pengguna"));
+                                Log.d("LOGIN_DEBUG", "   Email: " + user.optString("email"));
+                                Log.d("LOGIN_DEBUG", "➡ Redirecting to beranda...");
+
+                                Toast.makeText(this, "Login berhasil!", Toast.LENGTH_SHORT).show();
+                                startActivity(new Intent(this, beranda.class));
+                                finish();
+
                             } else {
-                                Log.w("LOGIN_DEBUG", "❌ Password incorrect");
-                                Toast.makeText(this, "❌ Password salah", Toast.LENGTH_SHORT).show();
+                                Log.w("LOGIN_DEBUG", "Password incorrect");
+                                Toast.makeText(this, "Password salah", Toast.LENGTH_SHORT).show();
                             }
+
                         } catch (JSONException e) {
                             Log.e("LOGIN_ERROR", "JSON parsing error: " + e.getMessage());
                             Toast.makeText(this, "Parsing error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        Log.w("LOGIN_DEBUG", "❌ Email not found in database");
+                        Log.w("LOGIN_DEBUG", "❌ Email tidak ditemukan");
                         Toast.makeText(this, "❌ Email tidak ditemukan", Toast.LENGTH_SHORT).show();
                     }
                 },
@@ -198,7 +196,8 @@ public class MainActivity extends AppCompatActivity {
         queue.add(request);
     }
 
-    // 🔹 LOGIN VIA GOOGLE SUPABASE
+
+    // ðŸ”¹ LOGIN VIA GOOGLE SUPABASE
     private void loginWithGoogle() {
         String redirectUrl = SUPABASE_URL + "/auth/v1/authorize?provider=google"
                 + "&redirect_to=" + Uri.encode("karirku://auth-callback");
@@ -209,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(browserIntent);
     }
 
-    // 🔹 Tangkap callback dari Supabase (Google OAuth)
+    // ðŸ”¹ Tangkap callback dari Supabase (Google OAuth)
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -222,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
                 String token = fullUri.substring(fullUri.indexOf("access_token=") + 13);
                 if (token.contains("&")) token = token.substring(0, token.indexOf("&"));
 
-                Log.d("SUPABASE_CALLBACK", "✅ Token received: " + token.substring(0, 20) + "...");
+                Log.d("SUPABASE_CALLBACK", "âœ… Token received: " + token.substring(0, 20) + "...");
 
                 // TODO: Fetch user data from Supabase Auth with token
                 // Then create session with that data
@@ -238,12 +237,12 @@ public class MainActivity extends AppCompatActivity {
                     Log.e("SUPABASE_CALLBACK", "Error creating temp session: " + e.getMessage());
                 }
 
-                Toast.makeText(this, "✅ Login Google sukses!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "âœ… Login Google sukses!", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(this, beranda.class));
                 finish();
             } else {
-                Log.e("SUPABASE_CALLBACK", "❌ No access token in callback");
-                Toast.makeText(this, "❌ Gagal ambil token Google!", Toast.LENGTH_SHORT).show();
+                Log.e("SUPABASE_CALLBACK", "No access token in callback");
+                Toast.makeText(this, "Gagal ambil token Google!", Toast.LENGTH_SHORT).show();
             }
         }
     }

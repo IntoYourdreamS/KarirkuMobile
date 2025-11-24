@@ -50,15 +50,22 @@ public class scancvFragment extends Fragment {
     private TextRecognizer textRecognizer;
     private Handler timeoutHandler;
 
+    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_scancv, container, false);
 
         Log.d(TAG, "========================================");
         Log.d(TAG, "📱 scancvFragment onCreate");
         Log.d(TAG, "========================================");
 
-        PDFBoxResourceLoader.init(requireContext());
+        // Initialize PDFBox
+        try {
+            PDFBoxResourceLoader.init(requireContext());
+            Log.d(TAG, "✅ PDFBox initialized");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ PDFBox init failed: " + e.getMessage());
+        }
 
         // Initialize ML Kit Text Recognition
         try {
@@ -69,8 +76,15 @@ public class scancvFragment extends Fragment {
             e.printStackTrace();
         }
 
+        // Initialize views
         btnUploadPDF = view.findViewById(R.id.btnUploadPDF);
         btnCamera = view.findViewById(R.id.btnCamera);
+
+        if (btnUploadPDF == null) {
+            Log.e(TAG, "❌ btnUploadPDF is NULL! Check XML id");
+        } else {
+            Log.d(TAG, "✅ btnUploadPDF found");
+        }
 
         if (btnCamera == null) {
             Log.e(TAG, "❌ btnCamera is NULL! Check XML id");
@@ -78,15 +92,20 @@ public class scancvFragment extends Fragment {
             Log.d(TAG, "✅ btnCamera found");
         }
 
-        btnUploadPDF.setOnClickListener(v -> {
-            Log.d(TAG, "📄 Upload PDF clicked");
-            openFileChooser();
-        });
+        // Set click listeners
+        if (btnUploadPDF != null) {
+            btnUploadPDF.setOnClickListener(v -> {
+                Log.d(TAG, "📄 Upload PDF clicked");
+                openFileChooser();
+            });
+        }
 
-        btnCamera.setOnClickListener(v -> {
-            Log.d(TAG, "📷 Camera button clicked");
-            openCamera();
-        });
+        if (btnCamera != null) {
+            btnCamera.setOnClickListener(v -> {
+                Log.d(TAG, "📷 Camera button clicked");
+                openCamera();
+            });
+        }
 
         timeoutHandler = new Handler(Looper.getMainLooper());
 
@@ -102,7 +121,7 @@ public class scancvFragment extends Fragment {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "⚠️ Camera permission NOT granted - requesting...");
-            ActivityCompat.requestPermissions(requireActivity(),
+            requestPermissions(
                     new String[]{Manifest.permission.CAMERA},
                     CAMERA_PERMISSION_CODE);
         } else {
@@ -151,7 +170,13 @@ public class scancvFragment extends Fragment {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("application/pdf");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(Intent.createChooser(intent, "Pilih CV (PDF)"), PICK_PDF_REQUEST);
+
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Pilih CV (PDF)"), PICK_PDF_REQUEST);
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error opening file chooser: " + e.getMessage());
+            Toast.makeText(getContext(), "❌ Tidak bisa membuka file picker", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -167,6 +192,7 @@ public class scancvFragment extends Fragment {
 
         if (resultCode != Activity.RESULT_OK) {
             Log.w(TAG, "⚠️ Result code is not OK - user cancelled?");
+            Toast.makeText(getContext(), "Batal", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -176,20 +202,24 @@ public class scancvFragment extends Fragment {
             return;
         }
 
+        // Handle PDF upload
         if (requestCode == PICK_PDF_REQUEST) {
             Log.d(TAG, "📄 Handling PDF upload");
-            if (data.getData() != null) {
-                Uri pdfUri = data.getData();
+            Uri pdfUri = data.getData();
+
+            if (pdfUri != null) {
                 Log.d(TAG, "PDF URI: " + pdfUri);
                 handlePdfFile(pdfUri);
             } else {
                 Log.e(TAG, "❌ PDF URI is null");
+                Toast.makeText(getContext(), "❌ Gagal membaca file PDF", Toast.LENGTH_SHORT).show();
             }
         }
+        // Handle camera result
         else if (requestCode == CAMERA_REQUEST) {
             Log.d(TAG, "📸 Handling camera result");
-            Bundle extras = data.getExtras();
 
+            Bundle extras = data.getExtras();
             if (extras == null) {
                 Log.e(TAG, "❌ Extras bundle is NULL");
                 Toast.makeText(getContext(), "❌ Gagal mengambil foto. Coba lagi.", Toast.LENGTH_SHORT).show();
@@ -226,8 +256,15 @@ public class scancvFragment extends Fragment {
         Log.d(TAG, "🔄 processCameraImage() START");
         Log.d(TAG, "========================================");
 
+        if (bitmap == null) {
+            Log.e(TAG, "❌ Bitmap is NULL");
+            Toast.makeText(getContext(), "❌ Gambar tidak valid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Toast.makeText(getContext(), "🔍 Memproses gambar CV...", Toast.LENGTH_SHORT).show();
 
+        // Reinitialize if needed
         if (textRecognizer == null) {
             Log.e(TAG, "❌ TextRecognizer is NULL! Reinitializing...");
             try {
@@ -321,24 +358,49 @@ public class scancvFragment extends Fragment {
     }
 
     private void handlePdfFile(Uri pdfUri) {
+        InputStream inputStream = null;
+        PDDocument document = null;
+
         try {
             String fileName = getFileName(pdfUri);
             Log.d(TAG, "📄 Processing PDF: " + fileName);
             Toast.makeText(getContext(), "📄 Memproses: " + fileName, Toast.LENGTH_SHORT).show();
 
-            InputStream inputStream = requireContext().getContentResolver().openInputStream(pdfUri);
-            PDDocument document = PDDocument.load(inputStream);
+            inputStream = requireContext().getContentResolver().openInputStream(pdfUri);
+
+            if (inputStream == null) {
+                throw new Exception("Cannot open input stream");
+            }
+
+            document = PDDocument.load(inputStream);
             PDFTextStripper pdfStripper = new PDFTextStripper();
             String text = pdfStripper.getText(document);
-            document.close();
 
             Log.d(TAG, "✅ PDF parsed. Text length: " + text.length());
+
+            if (text.isEmpty()) {
+                Toast.makeText(getContext(), "❌ PDF tidak mengandung text", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             extractKeywordsFromText(text, "PDF");
 
         } catch (Exception e) {
             Log.e(TAG, "❌ PDF parse error: " + e.getMessage());
             e.printStackTrace();
             Toast.makeText(getContext(), "❌ Gagal membaca PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } finally {
+            // Clean up resources
+            try {
+                if (document != null) {
+                    document.close();
+                }
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error closing resources: " + e.getMessage());
+            }
         }
     }
 
@@ -349,15 +411,15 @@ public class scancvFragment extends Fragment {
 
         String[] keywords = {
                 "teknologi", "technology", "software", "developer", "programmer", "IT", "coding",
-                "engineer", "java", "python", "web", "mobile", "android", "ios",
-                "desain", "design", "UI", "UX", "graphic",
-                "keuangan", "finance", "accounting", "akuntan",
+                "engineer", "java", "python", "web", "mobile", "android", "ios", "react", "vue",
+                "desain", "design", "UI", "UX", "graphic", "grafis",
+                "keuangan", "finance", "accounting", "akuntan", "akuntansi",
                 "perbankan", "bank", "banking",
-                "produksi", "production", "manufaktur",
-                "administrasi", "admin",
-                "teknik", "engineering",
-                "pertanian", "agriculture",
-                "pendidikan", "education", "guru", "teacher"
+                "produksi", "production", "manufaktur", "manufacturing",
+                "administrasi", "admin", "administrative",
+                "teknik", "engineering", "engineer",
+                "pertanian", "agriculture", "agrikultur",
+                "pendidikan", "education", "guru", "teacher", "pengajar"
         };
 
         List<String> matchedKeywords = new ArrayList<>();
@@ -383,9 +445,17 @@ public class scancvFragment extends Fragment {
                             "Produksi, Admin, Teknik, Pertanian, Pendidikan\n\n" +
                             "Cek Home untuk semua lowongan",
                     Toast.LENGTH_LONG).show();
-            CVKeywordManager.getInstance().clearKeywords();
+
+            // Clear keywords
+            if (CVKeywordManager.getInstance() != null) {
+                CVKeywordManager.getInstance().clearKeywords();
+            }
         } else {
-            CVKeywordManager.getInstance().setKeywords(matchedKeywords);
+            // Save keywords
+            if (CVKeywordManager.getInstance() != null) {
+                CVKeywordManager.getInstance().setKeywords(matchedKeywords);
+            }
+
             String keywordText = String.join(", ", matchedKeywords);
             Log.d(TAG, "✅ Keywords saved: " + keywordText);
 
@@ -399,27 +469,49 @@ public class scancvFragment extends Fragment {
 
     private String getFileName(Uri uri) {
         String result = null;
-        try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+        android.database.Cursor cursor = null;
+
+        try {
+            cursor = requireContext().getContentResolver().query(uri, null, null, null, null);
             if (cursor != null && cursor.moveToFirst()) {
                 int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                result = cursor.getString(nameIndex);
+                if (nameIndex >= 0) {
+                    result = cursor.getString(nameIndex);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting filename: " + e.getMessage());
+        } finally {
+            if (cursor != null) {
+                cursor.close();
             }
         }
+
         if (result == null) {
             result = uri.getLastPathSegment();
         }
-        return result;
+
+        return result != null ? result : "unknown.pdf";
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        // Clean up handler
+        if (timeoutHandler != null) {
+            timeoutHandler.removeCallbacksAndMessages(null);
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (timeoutHandler != null) {
-            timeoutHandler.removeCallbacksAndMessages(null);
-        }
+
+        // Close text recognizer
         if (textRecognizer != null) {
             textRecognizer.close();
-            Log.d(TAG, "🔚 TextRecognizer closed");
+            Log.d(TAG, "📚 TextRecognizer closed");
         }
     }
 }

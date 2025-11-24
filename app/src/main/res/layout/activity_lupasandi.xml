@@ -136,7 +136,7 @@
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnLengkapiProfil"
+        android:id="@+id/btnUbahpassword"
         android:layout_width="138dp"
         android:layout_height="wrap_content"
         android:text="Ubah sandi"

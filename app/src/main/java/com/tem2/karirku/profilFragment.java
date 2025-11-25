@@ -121,6 +121,10 @@ public class profilFragment extends Fragment {
         view.findViewById(R.id.itemCV).setOnClickListener(v ->
                 startActivity(new Intent(getActivity(), CvActivity.class)));
 
+        //pendataan user
+        view.findViewById(R.id.itemPreferensiKerja).setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), UserDataActivity.class)));
+
         // Setting
         view.findViewById(R.id.btnSetting).setOnClickListener(v ->
                 Toast.makeText(getActivity(), "Fitur settings", Toast.LENGTH_SHORT).show());

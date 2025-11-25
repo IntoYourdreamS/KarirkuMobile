@@ -11,7 +11,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- HEADER -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="48dp"
@@ -27,10 +26,11 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Preferensi Kerja"
+                android:text="Pendataan Pengguna"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:gravity="center" />
+                android:gravity="center"
+                android:textColor="@color/black"/>
 
             <TextView
                 android:id="@+id/btnEdit"
@@ -41,9 +41,8 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- CARD -->
         <LinearLayout
-            android:id="@+id/cardPreferensi"
+            android:id="@+id/cardUserData"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/shape_card"
@@ -51,124 +50,161 @@
             android:orientation="vertical"
             android:layout_marginTop="16dp">
 
-            <!-- Jenis Pekerjaan -->
-            <TextView
-                android:text="Jenis Pekerjaan"
-                android:textStyle="bold"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:id="@+id/inputJenisPekerjaan"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
+                android:gravity="center">
+
+                <RelativeLayout
+                    android:layout_width="110dp"
+                    android:layout_height="110dp">
+
+                    <ImageView
+                        android:id="@+id/imgProfile"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_profile_placeholder"
+                        android:background="@drawable/circle_white"
+                        android:scaleType="centerCrop"/>
+
+                    <ImageView
+                        android:id="@+id/btnEditPhoto"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:src="@drawable/ic_edit"
+                        android:layout_alignParentBottom="true"
+                        android:layout_alignParentEnd="true"
+                        android:background="@drawable/circle_white"
+                        android:padding="6dp"
+                        android:elevation="2dp"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <TextView
+                android:text="Nama Lengkap"
+                android:textStyle="bold"
+                android:layout_marginTop="20dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
+
+            <EditText
+                android:id="@+id/inputNama"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/shape_input"
-                android:hint="Belum dipilih"
-                android:focusable="false"/>
+                android:hint="Masukkan nama lengkap"/>
 
-            <com.google.android.flexbox.FlexboxLayout
-                android:id="@+id/tagJobContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:flexWrap="wrap"
-                android:layout_marginTop="8dp" />
-
-            <!-- Lokasi Kerja -->
             <TextView
-                android:text="Lokasi Kerja"
+                android:text="Email Pencaker"
                 android:textStyle="bold"
                 android:layout_marginTop="16dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
 
-            <TextView
-                android:id="@+id/inputLokasiKerja"
+            <EditText
+                android:id="@+id/inputEmail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:layout_marginTop="6dp"
+                android:padding="12dp"
                 android:background="@drawable/shape_input"
-                android:hint="Belum dipilih"
-                android:focusable="false"/>
+                android:layout_marginTop="6dp"
+                android:inputType="textEmailAddress"
+                android:hint="Masukkan email pencaker"/>
 
-            <com.google.android.flexbox.FlexboxLayout
-                android:id="@+id/tagLokasiContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:flexWrap="wrap"
-                android:layout_marginTop="8dp"/>
-
-            <!-- Gaji -->
             <TextView
-                android:text="Ekspektasi Gaji"
+                android:text="Nomor HP"
                 android:textStyle="bold"
                 android:layout_marginTop="16dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
+
+            <EditText
+                android:id="@+id/inputNoHp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:background="@drawable/shape_input"
+                android:layout_marginTop="6dp"
+                android:inputType="phone"
+                android:hint="Masukkan nomor HP"/>
+
+            <TextView
+                android:text="Tanggal Lahir"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
+
+            <TextView
+                android:id="@+id/inputTanggalLahir"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:background="@drawable/shape_input"
+                android:layout_marginTop="6dp"
+                android:focusable="false"
+                android:hint="Pilih tanggal lahir"/>
+
+            <TextView
+                android:text="Gender"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
 
             <Spinner
-                android:id="@+id/spinnerGaji"
+                android:id="@+id/spinnerGender"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"/>
+                android:layout_marginTop="6dp" />
 
-            <!-- Jenis Kontrak -->
             <TextView
-                android:text="Jenis Kontrak"
+                android:text="Alamat"
                 android:textStyle="bold"
                 android:layout_marginTop="16dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"/>
 
-            <TextView
-                android:id="@+id/inputJenisKontrak"
+            <EditText
+                android:id="@+id/inputAlamat"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:layout_marginTop="6dp"
+                android:minLines="3"
+                android:gravity="top"
+                android:padding="12dp"
                 android:background="@drawable/shape_input"
-                android:hint="Belum dipilih"
-                android:focusable="false"/>
+                android:layout_marginTop="6dp"
+                android:hint="Tulis alamat lengkap"/>
 
-            <com.google.android.flexbox.FlexboxLayout
-                android:id="@+id/tagKontrakContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:flexWrap="wrap"
-                android:layout_marginTop="8dp" />
-
-            <!-- Mode Kerja -->
             <TextView
-                android:text="Mode Kerja"
+                android:text="Pengalaman Kerja"
                 android:textStyle="bold"
+                android:layout_marginTop="16dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"/>
+                android:textColor="@color/black"/>
 
-            <CheckBox
-                android:id="@+id/checkRemote"
-                android:text="Remote"
-                android:layout_width="wrap_content"
+            <EditText
+                android:id="@+id/inputPengalaman"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp" />
-
-            <CheckBox
-                android:id="@+id/checkHybrid"
-                android:text="Hybrid"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <CheckBox
-                android:id="@+id/checkOnsite"
-                android:text="Onsite"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:minLines="3"
+                android:gravity="top"
+                android:padding="12dp"
+                android:background="@drawable/shape_input"
+                android:layout_marginTop="6dp"
+                android:hint="Contoh: Barista 1 tahun"/>
 
         </LinearLayout>
 
-        <!-- Save Button -->
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
@@ -177,6 +213,5 @@
             android:textColor="#FFFFFF"
             android:backgroundTint="#0CADF1"
             android:layout_marginTop="20dp"/>
-
     </LinearLayout>
 </ScrollView>

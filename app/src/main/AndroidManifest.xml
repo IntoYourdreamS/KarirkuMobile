@@ -125,7 +125,7 @@
             android:name=".ProfilKarirkuActivity"
             android:exported="false" />
         <activity
-            android:name=".PreferensiKerjaActivity"
+            android:name=".UserDataActivity"
             android:exported="false"
             android:theme="@style/Theme.KARIRKU" /> <!-- PDF Viewer (untuk preview CV) -->
         <activity

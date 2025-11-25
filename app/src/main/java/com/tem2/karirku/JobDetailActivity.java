@@ -1,6 +1,7 @@
 package com.tem2.karirku;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -101,7 +102,7 @@ public class JobDetailActivity extends AppCompatActivity {
                             "\n• Berdomisili di " + currentJob.getLocation());
                 }
 
-                // Additional info
+                // Additional info - HAPUS BARIS WAKTU
                 StringBuilder additionalInfo = new StringBuilder();
                 if (currentJob.getTipePekerjaan() != null && !currentJob.getTipePekerjaan().isEmpty()) {
                     additionalInfo.append("• Jenis: ").append(currentJob.getTipePekerjaan()).append("\n");
@@ -113,7 +114,7 @@ public class JobDetailActivity extends AppCompatActivity {
                     additionalInfo.append("• Mode Kerja: ").append(currentJob.getModeKerja()).append("\n");
                 }
                 additionalInfo.append("• Lokasi: ").append(currentJob.getLocation()).append("\n");
-                additionalInfo.append("• Waktu: ").append(currentJob.getPostedTime()).append("\n");
+                // BARIS INI DIHAPUS: additionalInfo.append("• Waktu: ").append(currentJob.getPostedTime()).append("\n");
                 additionalInfo.append("• Pendaftar: ").append(currentJob.getApplicants());
                 tvAdditionalInfo.setText(additionalInfo.toString());
 
@@ -128,10 +129,22 @@ public class JobDetailActivity extends AppCompatActivity {
     }
 
     private void fetchNoTelpFromDatabase() {
+        // PERBAIKAN: Validasi idLowongan sebelum fetch
+        if (currentJob.getIdLowongan() == 0) {
+            Log.e(TAG, "❌ Cannot fetch no_telp: Invalid job ID (0)");
+            runOnUiThread(() -> {
+                currentJob.setNoTelp("");
+                setupWhatsAppButton();
+            });
+            return;
+        }
+
         new Thread(() -> {
             try {
                 // Query langsung ke tabel lowongan untuk ambil no_telp
                 String url = SUPABASE_URL + "/rest/v1/lowongan?select=no_telp&id_lowongan=eq." + currentJob.getIdLowongan();
+
+                Log.d(TAG, "🔍 Fetching no_telp from URL: " + url);
 
                 HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
                 connection.setRequestMethod("GET");
@@ -139,31 +152,59 @@ public class JobDetailActivity extends AppCompatActivity {
                 connection.setRequestProperty("Authorization", "Bearer " + SUPABASE_API_KEY);
                 connection.setRequestProperty("Content-Type", "application/json");
 
-                InputStream responseStream = connection.getInputStream();
-                Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
-                String response = scanner.hasNext() ? scanner.next() : "";
+                int responseCode = connection.getResponseCode();
+                Log.d(TAG, "🔍 Fetch no_telp - Response Code: " + responseCode);
 
-                Log.d(TAG, "API Response for no_telp: " + response);
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    InputStream responseStream = connection.getInputStream();
+                    Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
+                    String response = scanner.hasNext() ? scanner.next() : "";
 
-                JSONArray jsonArray = new JSONArray(response);
-                if (jsonArray.length() > 0) {
-                    JSONObject jobData = jsonArray.getJSONObject(0);
-                    String phoneNumber = jobData.getString("no_telp");
+                    Log.d(TAG, "📨 API Response for no_telp: " + response);
 
-                    runOnUiThread(() -> {
-                        currentJob.setNoTelp(phoneNumber);
-                        Log.d(TAG, "✅ Fetched no_telp from database: " + phoneNumber);
-                        setupWhatsAppButton();
-                    });
+                    // PERBAIKAN: Handle empty response
+                    if (response == null || response.trim().isEmpty() || response.equals("[]")) {
+                        Log.e(TAG, "❌ Empty response from API for job ID: " + currentJob.getIdLowongan());
+                        runOnUiThread(() -> {
+                            currentJob.setNoTelp("");
+                            setupWhatsAppButton();
+                        });
+                        return;
+                    }
+
+                    JSONArray jsonArray = new JSONArray(response);
+                    if (jsonArray.length() > 0) {
+                        JSONObject jobData = jsonArray.getJSONObject(0);
+                        String phoneNumber = jobData.optString("no_telp", "");
+
+                        runOnUiThread(() -> {
+                            if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+                                currentJob.setNoTelp(phoneNumber);
+                                Log.d(TAG, "✅ Fetched no_telp from database: " + phoneNumber);
+                            } else {
+                                Log.w(TAG, "⚠️ No telephone number found for job ID: " + currentJob.getIdLowongan());
+                                currentJob.setNoTelp("");
+                            }
+                            setupWhatsAppButton();
+                        });
+                    } else {
+                        runOnUiThread(() -> {
+                            Log.e(TAG, "❌ No data found for job ID: " + currentJob.getIdLowongan());
+                            currentJob.setNoTelp("");
+                            setupWhatsAppButton();
+                        });
+                    }
                 } else {
+                    Log.e(TAG, "❌ HTTP Error fetching no_telp: " + responseCode);
                     runOnUiThread(() -> {
-                        Log.e(TAG, "❌ No data found for job ID: " + currentJob.getIdLowongan());
+                        currentJob.setNoTelp("");
                         setupWhatsAppButton();
                     });
                 }
             } catch (Exception e) {
                 Log.e(TAG, "❌ Error fetching no_telp: " + e.getMessage());
                 runOnUiThread(() -> {
+                    currentJob.setNoTelp("");
                     setupWhatsAppButton();
                 });
             }
@@ -174,10 +215,13 @@ public class JobDetailActivity extends AppCompatActivity {
         String phoneNumber = currentJob.getNoTelp();
 
         Log.d(TAG, "========================================");
-        Log.d(TAG, "🔍 WHATSAPP SETUP");
+        Log.d(TAG, "🔍 WHATSAPP SETUP DEBUG");
+        Log.d(TAG, "Job ID: " + currentJob.getIdLowongan());
         Log.d(TAG, "Company: " + currentJob.getCompanyName());
-        Log.d(TAG, "Job: " + currentJob.getJobTitle());
-        Log.d(TAG, "Phone: '" + phoneNumber + "'");
+        Log.d(TAG, "Job Title: " + currentJob.getJobTitle());
+        Log.d(TAG, "Raw Phone: '" + phoneNumber + "'");
+        Log.d(TAG, "Phone Length: " + (phoneNumber != null ? phoneNumber.length() : "null"));
+        Log.d(TAG, "Phone Empty: " + (phoneNumber == null || phoneNumber.trim().isEmpty()));
         Log.d(TAG, "========================================");
 
         btnWhatsApp.setVisibility(View.VISIBLE);
@@ -213,21 +257,47 @@ public class JobDetailActivity extends AppCompatActivity {
 
         String phoneNumber = currentJob.getNoTelp();
 
-        Log.d(TAG, "🎯 OPENING WHATSAPP WITH: " + phoneNumber);
+        Log.d(TAG, "🎯 OPENING WHATSAPP");
+        Log.d(TAG, "Company: " + currentJob.getCompanyName());
+        Log.d(TAG, "Job: " + currentJob.getJobTitle());
+        Log.d(TAG, "Original Phone: '" + phoneNumber + "'");
 
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            Toast.makeText(this, "❌ Nomor WhatsApp tidak tersedia", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "❌ Nomor WhatsApp tidak tersedia untuk lowongan ini", Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Bersihkan nomor - hapus semua non-digit
         String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
+        Log.d(TAG, "Cleaned Phone (numeric only): " + cleanNumber);
 
-        // Format nomor untuk WhatsApp
-        if (cleanNumber.startsWith("0")) {
+        if (cleanNumber.isEmpty()) {
+            Toast.makeText(this, "❌ Format nomor tidak valid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Handle berbagai format nomor
+        if (cleanNumber.startsWith("62")) {
+            // Nomor sudah dalam format internasional Indonesia, langsung gunakan
+            Log.d(TAG, "✅ Phone already in international format (62)");
+        } else if (cleanNumber.startsWith("0")) {
+            // Ganti 0 dengan 62
             cleanNumber = "62" + cleanNumber.substring(1);
-        } else if (!cleanNumber.startsWith("62")) {
+            Log.d(TAG, "🔄 Converted 0 to 62 format: " + cleanNumber);
+        } else {
+            // Tambahkan 62 jika tidak ada kode negara
             cleanNumber = "62" + cleanNumber;
+            Log.d(TAG, "➕ Added 62 prefix: " + cleanNumber);
+        }
+
+        // Pastikan tidak ada karakter tambahan
+        cleanNumber = cleanNumber.replaceAll("[^0-9]", "");
+
+        // Validasi panjang nomor (minimal 10 digit setelah 62)
+        if (cleanNumber.length() < 12) {
+            Toast.makeText(this, "❌ Nomor telepon terlalu pendek", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "❌ Phone number too short: " + cleanNumber);
+            return;
         }
 
         String message = "Halo, saya tertarik dengan lowongan *" + currentJob.getJobTitle() +
@@ -236,14 +306,18 @@ public class JobDetailActivity extends AppCompatActivity {
 
         String url = "https://wa.me/" + cleanNumber + "?text=" + Uri.encode(message);
 
-        Log.d(TAG, "🔗 WhatsApp URL: " + url);
+        Log.d(TAG, "🔗 Final WhatsApp URL: " + url);
+        Log.d(TAG, "📞 Final Phone Number: " + cleanNumber);
+        Log.d(TAG, "💬 Message: " + message);
 
         try {
+            // PERBAIKAN: Langsung redirect tanpa verifikasi
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             startActivity(intent);
+            Log.d(TAG, "✅ WhatsApp opened successfully");
         } catch (Exception e) {
             Toast.makeText(this, "❌ Gagal membuka WhatsApp", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Error: " + e.getMessage());
+            Log.e(TAG, "❌ Error opening WhatsApp: " + e.getMessage());
         }
     }
 }

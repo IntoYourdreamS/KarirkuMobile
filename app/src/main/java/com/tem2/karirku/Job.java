@@ -36,11 +36,13 @@ public class Job implements Serializable {
     }
 
     // Konstruktor lengkap untuk data dari API
+    // Konstruktor lengkap untuk data dari API
+    // Konstruktor lengkap untuk data dari API
     public Job(int idLowongan, String companyName, String location, String jobTitle,
                String postedTime, String applicants, String kategori, String tipePekerjaan,
                String gajiRange, String modeKerja, String deskripsi, String kualifikasi,
                String benefit, String noTelp) {
-        this.idLowongan = idLowongan;
+        this.idLowongan = idLowongan; // PASTIKAN ini terisi dengan nilai yang benar
         this.companyName = companyName;
         this.location = location;
         this.jobTitle = jobTitle;
@@ -55,7 +57,7 @@ public class Job implements Serializable {
         this.gajiRange = gajiRange;
         this.modeKerja = modeKerja;
         this.benefit = benefit;
-        this.noTelp = noTelp != null ? noTelp : "";
+        this.noTelp = noTelp != null ? noTelp.trim() : "";
     }
 
     // Getter dan Setter

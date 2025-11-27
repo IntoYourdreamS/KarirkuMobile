@@ -1,5 +1,6 @@
 package com.tem2.karirku;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -103,9 +104,17 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        // TAMBAHKAN ONCLICKLISTENER UNTUK PROFILE IMAGE
+        imgProfile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openUserDataActivity();
+            }
+        });
+
         loadLowonganFromAPI();
         setupSearchListener();
-        loadProfileImage();
+        loadProfileImage(); // PERBAIKAN: Panggil method yang sudah diperbaiki
         loadSearchHistory(); // LOAD RIWAYAT PENCARIAN
 
         // Setup tab clicks
@@ -128,6 +137,76 @@ public class HomeFragment extends Fragment {
         tabTerlama.setOnClickListener(tabClickListener);
 
         return view;
+    }
+
+    // PERBAIKAN: METHOD loadProfileImage YANG SUDAH DIPERBAIKI
+    private void loadProfileImage() {
+        int userId = sessionManager.getUserId();
+        Log.d("PROFILE_IMAGE", "Load profile image for user ID: " + userId);
+
+        String url = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/pencaker?id_pengguna=eq." + userId + "&select=foto_profil_url";
+
+        // PERBAIKAN: Gunakan requireContext() karena di Fragment
+        RequestQueue queue = Volley.newRequestQueue(requireContext());
+
+        JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        if (response.length() > 0) {
+                            JSONObject pencaker = response.getJSONObject(0);
+                            String fotoUrl = pencaker.optString("foto_profil_url", "");
+
+                            if (!fotoUrl.isEmpty()) {
+                                Log.d("PROFILE_IMAGE", "✅ Load image from pencaker: " + fotoUrl);
+
+                                // PERBAIKAN: Gunakan requireContext() untuk Glide di Fragment
+                                Glide.with(requireContext())
+                                        .load(fotoUrl)
+                                        .circleCrop()
+                                        .error(R.drawable.ic_profile_placeholder) // Fallback jika error loading
+                                        .into(imgProfile);
+                            } else {
+                                Log.d("PROFILE_IMAGE", "ℹ️ No profile image in pencaker table");
+                                setDefaultProfileImage();
+                            }
+                        } else {
+                            Log.d("PROFILE_IMAGE", "ℹ️ No data found in pencaker table");
+                            setDefaultProfileImage();
+                        }
+                    } catch (Exception e) {
+                        Log.e("PROFILE_IMAGE", "❌ Error parsing pencaker data: " + e.getMessage());
+                        setDefaultProfileImage();
+                    }
+                },
+                error -> {
+                    Log.e("PROFILE_IMAGE", "❌ Volley error: " + error.toString());
+                    if (error.networkResponse != null) {
+                        Log.e("PROFILE_IMAGE", "Error status: " + error.networkResponse.statusCode);
+                        Log.e("PROFILE_IMAGE", "Error response: " + new String(error.networkResponse.data));
+                    }
+                    setDefaultProfileImage();
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                return headers;
+            }
+        };
+
+        queue.add(request);
+    }
+
+    private void setDefaultProfileImage() {
+        imgProfile.setImageResource(R.drawable.ic_profile_placeholder);
+    }
+
+    // METHOD BARU UNTUK MEMBUKA UserDataActivity
+    private void openUserDataActivity() {
+        Intent intent = new Intent(getActivity(), UserDataActivity.class);
+        startActivity(intent);
     }
 
     // SETUP RECYCLERVIEW UNTUK RIWAYAT PENCARIAN
@@ -362,15 +441,6 @@ public class HomeFragment extends Fragment {
         tabTerbaru.setTextColor(getResources().getColor(R.color.gray));
         tabTerlama.setBackgroundResource(R.drawable.shape_stroke);
         tabTerlama.setTextColor(getResources().getColor(R.color.gray));
-    }
-
-    private void loadProfileImage() {
-        String fullUrl = "https://tkjnbelcgfwpbhppsnrl.supabase.co/storage/v1/object/public/profile/IMG_1462.JPG";
-
-        Glide.with(this)
-                .load(fullUrl)
-                .circleCrop()
-                .into(imgProfile);
     }
 
     private void openNotificationFragment() {

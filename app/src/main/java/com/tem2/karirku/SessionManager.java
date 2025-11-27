@@ -21,7 +21,6 @@ public class SessionManager {
     private SharedPreferences.Editor editor;
     private Context context;
 
-    // Session timeout: 7 days (in milliseconds)
     private static final long SESSION_TIMEOUT = 7 * 24 * 60 * 60 * 1000;
 
     public SessionManager(Context context) {
@@ -30,9 +29,6 @@ public class SessionManager {
         editor = prefs.edit();
     }
 
-    /**
-     * Save user session after login
-     */
     public void createSession(JSONObject user, String authToken) {
         try {
             editor.putInt(KEY_USER_ID, user.optInt("id_pengguna"));
@@ -45,22 +41,16 @@ public class SessionManager {
             editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
             editor.apply();
 
-            Log.d("SESSION", "✅ Session created for: " + user.optString("nama_lengkap"));
+            Log.d("SESSION", "Session created for: " + user.optString("nama_lengkap"));
         } catch (Exception e) {
-            Log.e("SESSION", "❌ Failed to create session: " + e.getMessage());
+            Log.e("SESSION", "Failed to create session: " + e.getMessage());
         }
     }
 
-    /**
-     * Save user session (simple version - without token)
-     */
     public void createSession(JSONObject user) {
         createSession(user, "");
     }
 
-    /**
-     * Check if user is logged in
-     */
     public boolean isLoggedIn() {
         boolean loggedIn = prefs.getBoolean(KEY_IS_LOGGED_IN, false);
 
@@ -68,13 +58,12 @@ public class SessionManager {
             return false;
         }
 
-        // Check session timeout
         long loginTime = prefs.getLong(KEY_LOGIN_TIME, 0);
         long currentTime = System.currentTimeMillis();
         long timeDiff = currentTime - loginTime;
 
         if (timeDiff > SESSION_TIMEOUT) {
-            Log.d("SESSION", "⏱️ Session expired (7 days)");
+            Log.d("SESSION", "Session expired (7 days)");
             clearSession();
             return false;
         }
@@ -82,70 +71,43 @@ public class SessionManager {
         return true;
     }
 
-    /**
-     * Get user ID
-     */
     public int getUserId() {
         return prefs.getInt(KEY_USER_ID, 0);
     }
 
-    /**
-     * Get user name
-     */
     public String getUserName() {
         return prefs.getString(KEY_USER_NAME, "");
     }
 
-    /**
-     * Get user email
-     */
     public String getUserEmail() {
         return prefs.getString(KEY_USER_EMAIL, "");
     }
 
-    /**
-     * Get user phone
-     */
     public String getUserPhone() {
         return prefs.getString(KEY_USER_PHONE, "");
     }
 
-    /**
-     * Get user role
-     */
     public String getUserRole() {
         return prefs.getString(KEY_USER_ROLE, "pencaker");
     }
 
-    /**
-     * Get auth token
-     */
     public String getAuthToken() {
         return prefs.getString(KEY_AUTH_TOKEN, "");
     }
 
-    /**
-     * Update user profile
-     */
     public void updateUserProfile(String name, String phone) {
         editor.putString(KEY_USER_NAME, name);
         editor.putString(KEY_USER_PHONE, phone);
         editor.apply();
-        Log.d("SESSION", "✅ Profile updated");
+        Log.d("SESSION", "Profile updated");
     }
 
-    /**
-     * Clear session (logout)
-     */
     public void clearSession() {
         editor.clear();
         editor.apply();
-        Log.d("SESSION", "✅ Session cleared");
+        Log.d("SESSION", "Session cleared");
     }
 
-    /**
-     * Get all session data as JSON
-     */
     public JSONObject getSessionData() {
         JSONObject data = new JSONObject();
         try {
@@ -161,25 +123,18 @@ public class SessionManager {
         return data;
     }
 
-    /**
-     * Check if session is about to expire (< 24 hours left)
-     */
     public boolean isSessionExpiringSoon() {
         long loginTime = prefs.getLong(KEY_LOGIN_TIME, 0);
         long currentTime = System.currentTimeMillis();
         long timeDiff = currentTime - loginTime;
         long timeLeft = SESSION_TIMEOUT - timeDiff;
 
-        // Less than 24 hours left
         return timeLeft < (24 * 60 * 60 * 1000);
     }
 
-    /**
-     * Renew session (update login time)
-     */
     public void renewSession() {
         editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
         editor.apply();
-        Log.d("SESSION", "✅ Session renewed");
+        Log.d("SESSION", "Session renewed");
     }
 }

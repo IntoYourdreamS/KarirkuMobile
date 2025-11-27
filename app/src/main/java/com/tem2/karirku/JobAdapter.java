@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONException;
@@ -32,27 +34,70 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
     private List<Integer> savedJobIds = new ArrayList<>();
     private SessionManager sessionManager;
     private int currentUserId;
-    private boolean isSavedMode; // Flag untuk mode disimpan
+    private int currentPencakerId;
+    private boolean isSavedMode;
 
     private static final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co";
     private static final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
 
-    // Konstruktor dengan mode
     public JobAdapter(Context context, List<Job> jobList, boolean isSavedMode) {
         this.context = context;
         this.jobList = jobList;
         this.isSavedMode = isSavedMode;
         this.sessionManager = new SessionManager(context);
         this.currentUserId = sessionManager.getUserId();
+        this.currentPencakerId = 0;
 
         if (!isSavedMode) {
-            loadSavedJobs(); // Hanya load saved jobs jika bukan mode disimpan
+            loadPencakerId();
         }
     }
 
-    // Konstruktor lama untuk kompatibilitas
     public JobAdapter(Context context, List<Job> jobList) {
         this(context, jobList, false);
+    }
+
+    private void loadPencakerId() {
+        if (currentUserId == 0) {
+            Log.e("FAVORITE", "User ID is 0, cannot load pencaker ID");
+            return;
+        }
+
+        String url = SUPABASE_URL + "/rest/v1/pencaker?id_pengguna=eq." + currentUserId + "&select=id_pencaker";
+
+        RequestQueue queue = Volley.newRequestQueue(context);
+        JsonArrayRequest request = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                response -> {
+                    try {
+                        if (response.length() > 0) {
+                            JSONObject pencaker = response.getJSONObject(0);
+                            currentPencakerId = pencaker.getInt("id_pencaker");
+                            Log.d("FAVORITE", "Loaded pencaker ID: " + currentPencakerId + " for user: " + currentUserId);
+                            loadSavedJobs();
+                        } else {
+                            Log.e("FAVORITE", "No pencaker found for user: " + currentUserId);
+                        }
+                    } catch (JSONException e) {
+                        Log.e("FAVORITE", "Error parsing pencaker data: " + e.getMessage());
+                    }
+                },
+                error -> {
+                    Log.e("FAVORITE", "Error loading pencaker ID: " + error.toString());
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                return headers;
+            }
+        };
+
+        queue.add(request);
     }
 
     @NonNull
@@ -66,12 +111,7 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
     public void onBindViewHolder(@NonNull JobViewHolder holder, int position) {
         Job job = jobList.get(position);
 
-        Log.d("JOB_ADAPTER", "🎯 Binding job - " +
-                "Position: " + position + ", " +
-                "Title: " + job.getJobTitle() + ", " +
-                "Company: " + job.getCompanyName() + ", " +
-                "ID: " + job.getIdLowongan() + ", " +
-                "SavedMode: " + isSavedMode);
+        Log.d("JOB_ADAPTER", "Binding job - ID: " + job.getIdLowongan() + ", Title: " + job.getJobTitle());
 
         holder.tvCompanyName.setText(job.getCompanyName());
         holder.tvLocation.setText(job.getLocation());
@@ -79,44 +119,36 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         holder.tvPostedTime.setText(job.getPostedTime());
         holder.tvApplicants.setText(job.getApplicants());
 
-        // Set tags
         holder.tvTag1.setText(job.getTag1());
         holder.tvTag2.setText(job.getTag2());
         holder.tvTag3.setText(job.getTag3());
 
-        // Sembunyikan tag yang kosong
         holder.tvTag1.setVisibility(job.getTag1().isEmpty() ? View.GONE : View.VISIBLE);
         holder.tvTag2.setVisibility(job.getTag2().isEmpty() ? View.GONE : View.VISIBLE);
         holder.tvTag3.setVisibility(job.getTag3().isEmpty() ? View.GONE : View.VISIBLE);
 
         holder.imgCompany.setImageResource(R.drawable.iconloker);
 
-        // Tombol save - di mode disimpan selalu aktif
-        if (isSavedMode || savedJobIds.contains(job.getIdLowongan())) {
-            holder.btnSave.setImageResource(R.drawable.icsimpan_active);
-        } else {
-            holder.btnSave.setImageResource(R.drawable.ic_simpan);
-        }
+        boolean isSaved = savedJobIds.contains(job.getIdLowongan());
+        updateSaveButton(holder.btnSave, isSaved);
 
         holder.btnSave.setOnClickListener(v -> {
-            Log.d("FAVORITE", "🎯 Tombol save diklik - Job ID: " + job.getIdLowongan() +
-                    ", User ID: " + currentUserId + ", SavedMode: " + isSavedMode);
+            Log.d("FAVORITE", "Tombol save diklik - Job ID: " + job.getIdLowongan() + ", User ID: " + currentUserId + ", Already Saved: " + isSaved);
 
             if (currentUserId == 0) {
                 Toast.makeText(context, "Silakan login terlebih dahulu", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if (isSavedMode) {
-                // Di mode disimpan, hapus dari favorit
+            if (currentPencakerId == 0) {
+                Toast.makeText(context, "Error: Data profil tidak lengkap", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (isSaved) {
                 removeFromFavorites(job.getIdLowongan(), holder, position);
             } else {
-                // Di mode biasa, toggle favorit
-                if (savedJobIds.contains(job.getIdLowongan())) {
-                    removeFromFavorites(job.getIdLowongan(), holder, position);
-                } else {
-                    addToFavorites(job, holder);
-                }
+                addToFavorites(job, holder);
             }
         });
 
@@ -125,6 +157,14 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
             intent.putExtra("JOB_DATA", job);
             context.startActivity(intent);
         });
+    }
+
+    private void updateSaveButton(ImageView btnSave, boolean isSaved) {
+        if (isSaved) {
+            btnSave.setImageResource(R.drawable.icsimpan_active);
+        } else {
+            btnSave.setImageResource(R.drawable.ic_simpan);
+        }
     }
 
     @Override
@@ -140,144 +180,146 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
     private void addToFavorites(Job job, JobViewHolder holder) {
         int jobId = job.getIdLowongan();
 
-        new Thread(() -> {
-            try {
-                String url = SUPABASE_URL + "/rest/v1/favorit_lowongan";
+        if (savedJobIds.contains(jobId)) {
+            Log.d("FAVORITE", "Lowongan sudah disimpan secara lokal, skip API call");
+            Toast.makeText(context, "Lowongan sudah disimpan", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-                JSONObject bodyJson = new JSONObject();
-                bodyJson.put("id_pencaker", currentUserId);
-                bodyJson.put("id_lowongan", jobId);
+        Log.d("FAVORITE", "Menyimpan lowongan ke favorit - Job ID: " + jobId + ", Pencaker ID: " + currentPencakerId);
 
-                Log.d("FAVORITE", "📤 Menyimpan favorit: " + bodyJson.toString());
+        String url = SUPABASE_URL + "/rest/v1/favorit_lowongan";
 
-                okhttp3.MediaType JSON = okhttp3.MediaType.parse("application/json; charset=utf-8");
-                okhttp3.RequestBody body = okhttp3.RequestBody.create(JSON, bodyJson.toString());
+        JSONObject bodyJson = new JSONObject();
+        try {
+            bodyJson.put("id_pencaker", currentPencakerId);
+            bodyJson.put("id_lowongan", jobId);
+            Log.d("FAVORITE", "Request Body: " + bodyJson.toString());
+        } catch (JSONException e) {
+            Log.e("FAVORITE", "Error creating JSON: " + e.getMessage());
+            return;
+        }
 
-                okhttp3.Request request = new okhttp3.Request.Builder()
-                        .url(url)
-                        .header("apikey", SUPABASE_API_KEY)
-                        .header("Authorization", "Bearer " + SUPABASE_API_KEY)
-                        .header("Prefer", "return=minimal")
-                        .post(body)
-                        .build();
+        RequestQueue queue = Volley.newRequestQueue(context);
 
-                okhttp3.OkHttpClient client = new okhttp3.OkHttpClient();
-                okhttp3.Response response = client.newCall(request).execute();
-
-                Log.d("FAVORITE", "📨 Response Code: " + response.code());
-
-                if (response.isSuccessful() || response.code() == 201) {
-                    Log.d("FAVORITE", "✅ Berhasil menyimpan ke favorit");
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.POST,
+                url,
+                bodyJson,
+                response -> {
+                    Log.d("FAVORITE", "Berhasil menyimpan ke favorit");
                     savedJobIds.add(jobId);
+                    updateSaveButton(holder.btnSave, true);
+                    Toast.makeText(context, "Lowongan disimpan", Toast.LENGTH_SHORT).show();
+                    sendSavedCountUpdateBroadcast();
+                },
+                error -> {
+                    Log.e("FAVORITE", "Gagal menyimpan favorit: " + error.toString());
 
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        holder.btnSave.setImageResource(R.drawable.icsimpan_active);
-                        Toast.makeText(context, "✅ Lowongan disimpan", Toast.LENGTH_SHORT).show();
-                    });
-                } else {
-                    String errorBody = response.body() != null ? response.body().string() : "Unknown error";
-                    Log.e("FAVORITE", "❌ Gagal menyimpan favorit: " + errorBody);
+                    if (error.networkResponse != null) {
+                        int statusCode = error.networkResponse.statusCode;
+                        String errorBody = error.networkResponse.data != null ?
+                                new String(error.networkResponse.data) : "No error body";
 
-                    // Handle error berdasarkan response code
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        if (response.code() == 409 || errorBody.contains("23505")) {
-                            // Duplicate entry - sudah disimpan sebelumnya
-                            Toast.makeText(context, "✅ Lowongan sudah disimpan", Toast.LENGTH_SHORT).show();
-                            holder.btnSave.setImageResource(R.drawable.icsimpan_active);
+                        Log.d("FAVORITE", "Error Details - Status: " + statusCode + ", Body: " + errorBody);
+
+                        if (statusCode == 409) {
+                            Log.d("FAVORITE", "Error 409 - Lowongan sudah ada di database, update UI");
                             savedJobIds.add(jobId);
+                            updateSaveButton(holder.btnSave, true);
+                            Toast.makeText(context, "Lowongan sudah disimpan", Toast.LENGTH_SHORT).show();
+                            sendSavedCountUpdateBroadcast();
+                            loadSavedJobs();
+                        } else if (statusCode == 400) {
+                            Toast.makeText(context, "Data tidak valid", Toast.LENGTH_SHORT).show();
+                        } else if (statusCode == 401) {
+                            Toast.makeText(context, "Tidak diizinkan - silakan login ulang", Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(context, "❌ Gagal menyimpan lowongan", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "Gagal menyimpan (Error: " + statusCode + ")", Toast.LENGTH_SHORT).show();
                         }
-                    });
+                    } else {
+                        Toast.makeText(context, "Error jaringan - periksa koneksi internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
-
-            } catch (Exception e) {
-                Log.e("FAVORITE", "❌ Exception: " + e.getMessage(), e);
-                ((android.app.Activity) context).runOnUiThread(() -> {
-                    Toast.makeText(context, "❌ Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                headers.put("Prefer", "return=minimal");
+                return headers;
             }
-        }).start();
+        };
+
+        queue.add(request);
     }
 
     private void removeFromFavorites(int jobId, JobViewHolder holder, int position) {
-        new Thread(() -> {
-            try {
-                String url = SUPABASE_URL + "/rest/v1/favorit_lowongan" +
-                        "?id_pencaker=eq." + currentUserId +
-                        "&id_lowongan=eq." + jobId;
-
-                okhttp3.Request request = new okhttp3.Request.Builder()
-                        .url(url)
-                        .header("apikey", SUPABASE_API_KEY)
-                        .header("Authorization", "Bearer " + SUPABASE_API_KEY)
-                        .delete()
-                        .build();
-
-                okhttp3.OkHttpClient client = new okhttp3.OkHttpClient();
-                okhttp3.Response response = client.newCall(request).execute();
-
-                Log.d("FAVORITE", "🗑️ Response Code (delete): " + response.code());
-
-                if (response.isSuccessful()) {
-                    savedJobIds.remove((Integer) jobId);
-
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        if (isSavedMode) {
-                            // Di mode disimpan, hapus item dari list
-                            jobList.remove(position);
-                            notifyItemRemoved(position);
-                            notifyItemRangeChanged(position, jobList.size());
-                            Toast.makeText(context, "❌ Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
-                        } else {
-                            // Di mode biasa, hanya ubah icon
-                            holder.btnSave.setImageResource(R.drawable.ic_simpan);
-                            Toast.makeText(context, "❌ Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } else {
-                    Log.e("FAVORITE", "❌ Gagal menghapus favorit");
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        Toast.makeText(context, "❌ Gagal menghapus lowongan", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            } catch (Exception e) {
-                Log.e("FAVORITE", "❌ Error remove: " + e.getMessage());
-                ((android.app.Activity) context).runOnUiThread(() -> {
-                    Toast.makeText(context, "❌ Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            }
-        }).start();
-    }
-
-    private void loadSavedJobs() {
-        if (currentUserId == 0) return;
+        if (!savedJobIds.contains(jobId)) {
+            Log.d("FAVORITE", "Lowongan sudah dihapus secara lokal, skip API call");
+            Toast.makeText(context, "Lowongan sudah dihapus", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         String url = SUPABASE_URL + "/rest/v1/favorit_lowongan" +
-                "?id_pencaker=eq." + currentUserId +
-                "&select=id_lowongan";
+                "?id_pencaker=eq." + currentPencakerId +
+                "&id_lowongan=eq." + jobId;
+
+        Log.d("FAVORITE", "Menghapus dari favorit - URL: " + url);
 
         RequestQueue queue = Volley.newRequestQueue(context);
-        com.android.volley.toolbox.JsonArrayRequest request = new com.android.volley.toolbox.JsonArrayRequest(
-                Request.Method.GET,
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.DELETE,
                 url,
                 null,
                 response -> {
-                    try {
-                        savedJobIds.clear();
-                        for (int i = 0; i < response.length(); i++) {
-                            JSONObject obj = response.getJSONObject(i);
-                            int jobId = obj.getInt("id_lowongan");
-                            savedJobIds.add(jobId);
-                        }
-                        Log.d("FAVORITE", "✅ Loaded " + savedJobIds.size() + " saved jobs");
-                        notifyDataSetChanged();
-                    } catch (JSONException e) {
-                        Log.e("FAVORITE", "❌ Error parsing saved jobs: " + e.getMessage());
+                    Log.d("FAVORITE", "Berhasil menghapus dari favorit");
+                    savedJobIds.remove((Integer) jobId);
+
+                    if (isSavedMode) {
+                        jobList.remove(position);
+                        notifyItemRemoved(position);
+                        notifyItemRangeChanged(position, jobList.size());
+                        Toast.makeText(context, "Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
+                    } else {
+                        updateSaveButton(holder.btnSave, false);
+                        Toast.makeText(context, "Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
                     }
+
+                    sendSavedCountUpdateBroadcast();
                 },
                 error -> {
-                    Log.e("FAVORITE", "❌ Gagal load saved jobs: " + error.toString());
+                    Log.e("FAVORITE", "Gagal menghapus favorit: " + error.toString());
+
+                    if (error.networkResponse != null) {
+                        int statusCode = error.networkResponse.statusCode;
+                        String errorBody = error.networkResponse.data != null ?
+                                new String(error.networkResponse.data) : "No error body";
+
+                        Log.d("FAVORITE", "Delete Error - Status: " + statusCode + ", Body: " + errorBody);
+
+                        if (statusCode == 404) {
+                            Log.d("FAVORITE", "Error 404 - Data sudah dihapus, update UI");
+                            savedJobIds.remove((Integer) jobId);
+
+                            if (isSavedMode) {
+                                jobList.remove(position);
+                                notifyItemRemoved(position);
+                                notifyItemRangeChanged(position, jobList.size());
+                            } else {
+                                updateSaveButton(holder.btnSave, false);
+                            }
+                            Toast.makeText(context, "Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
+                            sendSavedCountUpdateBroadcast();
+                        } else {
+                            Toast.makeText(context, "Gagal menghapus lowongan (Error: " + statusCode + ")", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(context, "Error jaringan - periksa koneksi internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
         ) {
             @Override
@@ -291,6 +333,64 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         };
 
         queue.add(request);
+    }
+
+    private void loadSavedJobs() {
+        if (currentPencakerId == 0) {
+            Log.d("FAVORITE", "Pencaker ID 0, skip load saved jobs");
+            return;
+        }
+
+        String url = SUPABASE_URL + "/rest/v1/favorit_lowongan" +
+                "?id_pencaker=eq." + currentPencakerId +
+                "&select=id_lowongan";
+
+        Log.d("FAVORITE", "Loading saved jobs from: " + url);
+
+        RequestQueue queue = Volley.newRequestQueue(context);
+        JsonArrayRequest request = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                response -> {
+                    try {
+                        savedJobIds.clear();
+                        for (int i = 0; i < response.length(); i++) {
+                            JSONObject obj = response.getJSONObject(i);
+                            int jobId = obj.getInt("id_lowongan");
+                            savedJobIds.add(jobId);
+                        }
+                        Log.d("FAVORITE", "Loaded " + savedJobIds.size() + " saved jobs: " + savedJobIds);
+                        notifyDataSetChanged();
+                    } catch (Exception e) {
+                        Log.e("FAVORITE", "Error parsing saved jobs: " + e.getMessage());
+                    }
+                },
+                error -> {
+                    Log.e("FAVORITE", "Gagal load saved jobs: " + error.toString());
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+        };
+
+        queue.add(request);
+    }
+
+    private void sendSavedCountUpdateBroadcast() {
+        try {
+            Intent intent = new Intent("UPDATE_SAVED_JOBS_COUNT");
+            context.sendBroadcast(intent);
+            Log.d("BROADCAST", "Broadcast sent for saved jobs count update");
+        } catch (Exception e) {
+            Log.e("BROADCAST", "Error sending broadcast: " + e.getMessage());
+        }
     }
 
     public static class JobViewHolder extends RecyclerView.ViewHolder {

@@ -53,6 +53,7 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
 //    implementation("com.google.ai.client:generativeai")
 
+
     implementation("com.nex3z:flow-layout:1.3.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation("com.google.guava:guava:31.0.1-android")
@@ -75,8 +76,24 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     implementation("com.google.android.flexbox:flexbox:3.0.0")
+    // Supabase untuk versi terbaru
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:supabase-kt:2.3.1")
 
+    // Ktor Client (sudah ada)
+    implementation("io.ktor:ktor-client-android:2.3.11")
+    implementation("io.ktor:ktor-client-okhttp:2.3.11")
 
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Glide (sudah ada)
+    implementation("com.github.bumptech.glide:glide:4.15.1")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

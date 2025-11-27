@@ -1,7 +1,6 @@
 package com.tem2.karirku;
 
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,8 +25,8 @@ public class JobDetailActivity extends AppCompatActivity {
     private static final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
 
     private ImageView btnBack;
-    private TextView tvJobTitle, tvCompanyName, tvLocation, tvPostedTime, tvApplicants;
-    private TextView tvTag1, tvTag2, tvTag3, tvJobDescription, tvRequirements, tvAdditionalInfo;
+    private TextView tvJobTitle, tvCompanyName, tvLocation, tvJobDescription, tvRequirements;
+    private TextView tvTag1, tvTag2, tvTag3, tvJobTypeValue, tvSalary, tvWorkingHours, tvExpertise;
     private MaterialButton btnWhatsApp;
     private Button btnApply;
 
@@ -38,9 +37,15 @@ public class JobDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_job_detail);
 
-        initViews();
-        loadJobData();
-        setupClickListeners();
+        try {
+            initViews();
+            loadJobData();
+            setupClickListeners();
+        } catch (Exception e) {
+            Log.e(TAG, "❌ ERROR in onCreate: " + e.getMessage(), e);
+            Toast.makeText(this, "Terjadi kesalahan saat memuat detail lowongan", Toast.LENGTH_SHORT).show();
+            finish();
+        }
     }
 
     private void initViews() {
@@ -48,88 +53,114 @@ public class JobDetailActivity extends AppCompatActivity {
         tvJobTitle = findViewById(R.id.tvJobTitle);
         tvCompanyName = findViewById(R.id.tvCompanyName);
         tvLocation = findViewById(R.id.tvLocation);
-        tvPostedTime = findViewById(R.id.tvPostedTime);
-        tvApplicants = findViewById(R.id.tvApplicants);
+        tvJobDescription = findViewById(R.id.tvJobDescription);
+        tvRequirements = findViewById(R.id.tvRequirements);
         tvTag1 = findViewById(R.id.tvTag1);
         tvTag2 = findViewById(R.id.tvTag2);
         tvTag3 = findViewById(R.id.tvTag3);
-        tvJobDescription = findViewById(R.id.tvJobDescription);
-        tvRequirements = findViewById(R.id.tvRequirements);
-        tvAdditionalInfo = findViewById(R.id.tvAdditionalInfo);
+        tvJobTypeValue = findViewById(R.id.tvJobTypeValue);
+        tvSalary = findViewById(R.id.tvSalary);
+        tvWorkingHours = findViewById(R.id.tvWorkingHours);
+        tvExpertise = findViewById(R.id.tvExpertise);
         btnWhatsApp = findViewById(R.id.btnWhatsApp);
         btnApply = findViewById(R.id.btnApplywa);
     }
 
     private void loadJobData() {
-        Intent intent = getIntent();
-        if (intent != null) {
-            currentJob = (Job) intent.getSerializableExtra("JOB_DATA");
+        try {
+            Intent intent = getIntent();
+            if (intent != null && intent.hasExtra("JOB_DATA")) {
+                currentJob = (Job) intent.getSerializableExtra("JOB_DATA");
 
-            if (currentJob != null) {
-                Log.d(TAG, "========================================");
-                Log.d(TAG, "Loading job data: " + currentJob.toString());
-                Log.d(TAG, "========================================");
+                if (currentJob != null) {
+                    Log.d(TAG, "========================================");
+                    Log.d(TAG, "Loading job data: " + currentJob.toString());
+                    Log.d(TAG, "========================================");
 
-                // Set data ke UI
-                tvJobTitle.setText(currentJob.getJobTitle());
-                tvCompanyName.setText(currentJob.getCompanyName());
-                tvLocation.setText(currentJob.getLocation());
-                tvPostedTime.setText(currentJob.getPostedTime());
-                tvApplicants.setText("• " + currentJob.getApplicants());
-                tvTag1.setText(currentJob.getTag1());
-                tvTag2.setText(currentJob.getTag2());
-                tvTag3.setText(currentJob.getTag3());
+                    // Set basic job info
+                    tvJobTitle.setText(currentJob.getJobTitle() != null ? currentJob.getJobTitle() : "Judul tidak tersedia");
+                    tvCompanyName.setText(currentJob.getCompanyName() != null ? currentJob.getCompanyName() : "Perusahaan tidak tersedia");
+                    tvLocation.setText(currentJob.getLocation() != null ? currentJob.getLocation() : "Lokasi tidak tersedia");
 
-                // Set deskripsi
-                String description = currentJob.getDeskripsi();
-                if (description != null && !description.isEmpty()) {
-                    tvJobDescription.setText(description);
+                    // Set tags dengan null safety
+                    tvTag1.setText(currentJob.getTag1() != null ? currentJob.getTag1() : "");
+                    tvTag2.setText(currentJob.getTag2() != null ? currentJob.getTag2() : "");
+                    tvTag3.setText(currentJob.getTag3() != null ? currentJob.getTag3() : "");
+
+                    // Sembunyikan tag yang kosong
+                    tvTag1.setVisibility(currentJob.getTag1() != null && !currentJob.getTag1().isEmpty() ? View.VISIBLE : View.GONE);
+                    tvTag2.setVisibility(currentJob.getTag2() != null && !currentJob.getTag2().isEmpty() ? View.VISIBLE : View.GONE);
+                    tvTag3.setVisibility(currentJob.getTag3() != null && !currentJob.getTag3().isEmpty() ? View.VISIBLE : View.GONE);
+
+                    // Set job details grid
+                    tvJobTypeValue.setText(currentJob.getTipePekerjaan() != null ? currentJob.getTipePekerjaan() : "Full Time");
+                    tvSalary.setText(currentJob.getGajiRange() != null ? currentJob.getGajiRange() : "Dirahasiakan");
+                    tvWorkingHours.setText(currentJob.getModeKerja() != null ? currentJob.getModeKerja() : "Fleksibel");
+                    tvExpertise.setText(currentJob.getTag1() != null ? currentJob.getTag1() : "Menyesuaikan");
+
+                    // Set deskripsi
+                    String description = currentJob.getDeskripsi();
+                    if (description != null && !description.isEmpty()) {
+                        tvJobDescription.setText(description);
+                    } else {
+                        tvJobDescription.setText("Lowongan " + currentJob.getJobTitle() +
+                                " di " + currentJob.getCompanyName() +
+                                " membuka kesempatan bagi profesional yang berpengalaman di bidang " +
+                                (currentJob.getTag1() != null ? currentJob.getTag1() : "terkait") + ".\n\n" +
+                                "Bergabunglah dengan tim kami yang dinamis dan berkembang pesat.");
+                    }
+
+                    // Set kualifikasi
+                    String kualifikasi = currentJob.getKualifikasi();
+                    if (kualifikasi != null && !kualifikasi.isEmpty()) {
+                        tvRequirements.setText(kualifikasi);
+                    } else {
+                        StringBuilder defaultRequirements = new StringBuilder();
+                        if (currentJob.getTag1() != null && !currentJob.getTag1().isEmpty()) {
+                            defaultRequirements.append("• Pengalaman di bidang ").append(currentJob.getTag1()).append("\n");
+                        }
+                        if (currentJob.getTag2() != null && !currentJob.getTag2().isEmpty()) {
+                            defaultRequirements.append("• Memahami ").append(currentJob.getTag2()).append("\n");
+                        }
+                        if (currentJob.getTag3() != null && !currentJob.getTag3().isEmpty()) {
+                            defaultRequirements.append("• Dapat bekerja ").append(currentJob.getTag3()).append("\n");
+                        }
+                        if (currentJob.getLocation() != null && !currentJob.getLocation().isEmpty()) {
+                            defaultRequirements.append("• Berdomisili di ").append(currentJob.getLocation()).append("\n");
+                        }
+
+                        if (defaultRequirements.length() == 0) {
+                            defaultRequirements.append("• Pengalaman di bidang terkait\n");
+                            defaultRequirements.append("• Kemampuan komunikasi yang baik\n");
+                            defaultRequirements.append("• Dapat bekerja dalam tim\n");
+                            defaultRequirements.append("• Memiliki motivasi tinggi");
+                        }
+
+                        tvRequirements.setText(defaultRequirements.toString());
+                    }
+
+                    // Jika noTelp kosong, fetch dari database
+                    if (currentJob.getNoTelp() == null || currentJob.getNoTelp().isEmpty()) {
+                        fetchNoTelpFromDatabase();
+                    } else {
+                        setupWhatsAppButton();
+                    }
                 } else {
-                    tvJobDescription.setText("Lowongan " + currentJob.getJobTitle() +
-                            " di " + currentJob.getCompanyName() +
-                            " membuka kesempatan bagi profesional yang berpengalaman di bidang " +
-                            currentJob.getTag1() + ".");
+                    Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
+                    finish();
                 }
-
-                // Set kualifikasi
-                String kualifikasi = currentJob.getKualifikasi();
-                if (kualifikasi != null && !kualifikasi.isEmpty()) {
-                    tvRequirements.setText(kualifikasi);
-                } else {
-                    tvRequirements.setText("• Pengalaman di bidang " + currentJob.getTag1() +
-                            "\n• Memahami " + currentJob.getTag2() +
-                            "\n• Dapat bekerja " + currentJob.getTag3() +
-                            "\n• Berdomisili di " + currentJob.getLocation());
-                }
-
-                // Additional info - HAPUS BARIS WAKTU
-                StringBuilder additionalInfo = new StringBuilder();
-                if (currentJob.getTipePekerjaan() != null && !currentJob.getTipePekerjaan().isEmpty()) {
-                    additionalInfo.append("• Jenis: ").append(currentJob.getTipePekerjaan()).append("\n");
-                }
-                if (currentJob.getGajiRange() != null && !currentJob.getGajiRange().isEmpty()) {
-                    additionalInfo.append("• Gaji: ").append(currentJob.getGajiRange()).append("\n");
-                }
-                if (currentJob.getModeKerja() != null && !currentJob.getModeKerja().isEmpty()) {
-                    additionalInfo.append("• Mode Kerja: ").append(currentJob.getModeKerja()).append("\n");
-                }
-                additionalInfo.append("• Lokasi: ").append(currentJob.getLocation()).append("\n");
-                // BARIS INI DIHAPUS: additionalInfo.append("• Waktu: ").append(currentJob.getPostedTime()).append("\n");
-                additionalInfo.append("• Pendaftar: ").append(currentJob.getApplicants());
-                tvAdditionalInfo.setText(additionalInfo.toString());
-
-                // Jika noTelp kosong, fetch dari database
-                if (currentJob.getNoTelp() == null || currentJob.getNoTelp().isEmpty()) {
-                    fetchNoTelpFromDatabase();
-                } else {
-                    setupWhatsAppButton();
-                }
+            } else {
+                Toast.makeText(this, "Terjadi kesalahan saat membuka detail lowongan", Toast.LENGTH_SHORT).show();
+                finish();
             }
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error in loadJobData: " + e.getMessage(), e);
+            Toast.makeText(this, "Gagal memuat data lowongan", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 
     private void fetchNoTelpFromDatabase() {
-        // PERBAIKAN: Validasi idLowongan sebelum fetch
         if (currentJob.getIdLowongan() == 0) {
             Log.e(TAG, "❌ Cannot fetch no_telp: Invalid job ID (0)");
             runOnUiThread(() -> {
@@ -141,7 +172,6 @@ public class JobDetailActivity extends AppCompatActivity {
 
         new Thread(() -> {
             try {
-                // Query langsung ke tabel lowongan untuk ambil no_telp
                 String url = SUPABASE_URL + "/rest/v1/lowongan?select=no_telp&id_lowongan=eq." + currentJob.getIdLowongan();
 
                 Log.d(TAG, "🔍 Fetching no_telp from URL: " + url);
@@ -162,7 +192,6 @@ public class JobDetailActivity extends AppCompatActivity {
 
                     Log.d(TAG, "📨 API Response for no_telp: " + response);
 
-                    // PERBAIKAN: Handle empty response
                     if (response == null || response.trim().isEmpty() || response.equals("[]")) {
                         Log.e(TAG, "❌ Empty response from API for job ID: " + currentJob.getIdLowongan());
                         runOnUiThread(() -> {
@@ -242,7 +271,13 @@ public class JobDetailActivity extends AppCompatActivity {
     private void setupClickListeners() {
         btnBack.setOnClickListener(v -> finish());
 
-        btnWhatsApp.setOnClickListener(v -> openWhatsApp());
+        btnWhatsApp.setOnClickListener(v -> {
+            if (btnWhatsApp.isEnabled()) {
+                openWhatsApp();
+            } else {
+                Toast.makeText(this, "Fitur WhatsApp tidak tersedia untuk lowongan ini", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         btnApply.setOnClickListener(v -> {
             Toast.makeText(this, "Fitur lamar sedang dikembangkan", Toast.LENGTH_SHORT).show();
@@ -311,7 +346,6 @@ public class JobDetailActivity extends AppCompatActivity {
         Log.d(TAG, "💬 Message: " + message);
 
         try {
-            // PERBAIKAN: Langsung redirect tanpa verifikasi
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             startActivity(intent);
             Log.d(TAG, "✅ WhatsApp opened successfully");
@@ -320,4 +354,10 @@ public class JobDetailActivity extends AppCompatActivity {
             Log.e(TAG, "❌ Error opening WhatsApp: " + e.getMessage());
         }
     }
-}
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "JobDetailActivity destroyed");
+    }
+}   

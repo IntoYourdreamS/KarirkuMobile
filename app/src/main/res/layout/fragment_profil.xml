@@ -204,7 +204,8 @@
                 android:fontFamily="@font/interdisplaybold"
                 android:paddingVertical="10dp"
                 android:gravity="center"
-                android:textAlignment="center"/>
+                android:textAlignment="center"
+                android:textColor="@color/black"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnLengkapiProfil"
@@ -226,7 +227,8 @@
             android:layout_height="wrap_content"
             android:text="Profil &amp; Preferensi Pekerjaan"
             android:textSize="16sp"
-            android:fontFamily="@font/interdisplaybold" />
+            android:fontFamily="@font/interdisplaybold"
+            android:textColor="@color/black"/>
 
         <LinearLayout
             android:id="@+id/cardProfilPreferensi"
@@ -356,7 +358,8 @@
             android:layout_height="wrap_content"
             android:text="Lainnya"
             android:textSize="16sp"
-            android:fontFamily="@font/interdisplaybold" />
+            android:fontFamily="@font/interdisplaybold"
+            android:textColor="@color/black"/>
 
         <LinearLayout
             android:id="@+id/btnKeluar"

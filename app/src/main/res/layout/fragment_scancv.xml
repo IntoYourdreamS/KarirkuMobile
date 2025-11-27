@@ -92,7 +92,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Divider -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -104,12 +103,11 @@
                 android:layout_marginTop="15dp"
                 android:layout_marginBottom="15dp" />
 
-            <!-- Scan dengan Kamera Button -->
             <Button
                 android:id="@+id/btnCamera"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📷 Scan CV dengan Kamera"
+                android:text="Scan CV dengan Kamera"
                 android:textSize="16sp"
                 android:textColor="@color/white"
                 android:backgroundTint="#0D99FF"

@@ -95,7 +95,8 @@
                 android:padding="12dp"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/shape_input"
-                android:hint="Masukkan nama lengkap"/>
+                android:hint="Masukkan nama lengkap"
+                android:textColor="@color/black"/>
 
             <TextView
                 android:text="Email Pencaker"

@@ -30,6 +30,7 @@
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:gravity="center"
+                android:textColor="@color/black"
                 android:paddingEnd="28dp"/>
         </LinearLayout>
 
@@ -39,7 +40,8 @@
             android:layout_height="wrap_content"
             android:text="Biodata"
             android:textStyle="bold"
-            android:textSize="18sp"/>
+            android:textSize="18sp"
+            android:textColor="@color/black"/>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -53,7 +55,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Nama"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/black"/>
+
             <TextView
                 android:id="@+id/tvNamaValue"
                 android:layout_width="match_parent"
@@ -61,13 +65,16 @@
                 android:text="-"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:textColor="@color/black"
                 android:layout_marginBottom="10dp"/>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Tanggal Lahir"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/black"/>
+
             <TextView
                 android:id="@+id/tvTanggalValue"
                 android:layout_width="match_parent"
@@ -75,13 +82,16 @@
                 android:text="-"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:textColor="@color/black"
                 android:layout_marginBottom="10dp"/>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Jenis Kelamin"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/black"/>
+
             <TextView
                 android:id="@+id/tvGenderValue"
                 android:layout_width="match_parent"
@@ -89,20 +99,24 @@
                 android:text="-"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:textColor="@color/black"
                 android:layout_marginBottom="10dp"/>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Domisili"
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/black"/>
+
             <TextView
                 android:id="@+id/tvDomisiliValue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="-"
                 android:textSize="16sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:textColor="@color/black"/>
         </LinearLayout>
 
         <!-- Card Pendidikan -->
@@ -112,6 +126,7 @@
             android:text="Pendidikan"
             android:textStyle="bold"
             android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -121,7 +136,8 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
 
         <!-- Card Skill -->
         <TextView
@@ -130,6 +146,7 @@
             android:text="Skill"
             android:textStyle="bold"
             android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -139,7 +156,8 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
 
         <!-- Tentang Saya -->
         <TextView
@@ -148,6 +166,7 @@
             android:text="Tentang Saya"
             android:textStyle="bold"
             android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -157,7 +176,8 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
 
         <!-- Penghargaan -->
         <TextView
@@ -166,6 +186,7 @@
             android:text="Penghargaan"
             android:textStyle="bold"
             android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -175,15 +196,17 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
 
         <!-- Sertifikat -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Sertifikat"
-            android:textSize="18sp"
             android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -193,7 +216,8 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
 
         <!-- Portofolio -->
         <TextView
@@ -202,6 +226,7 @@
             android:text="Portofolio"
             android:textStyle="bold"
             android:textSize="18sp"
+            android:textColor="@color/black"
             android:layout_marginTop="18dp"/>
 
         <TextView
@@ -211,8 +236,8 @@
             android:padding="16dp"
             android:background="@drawable/shape_card"
             android:text="Belum diisi"
-            android:textSize="15sp"/>
-
+            android:textSize="15sp"
+            android:textColor="@color/black"/>
     </LinearLayout>
 
 </ScrollView>

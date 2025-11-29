@@ -16,7 +16,7 @@
     <LinearLayout
         android:id="@+id/customBottomNav"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="75dp"
         android:orientation="horizontal"
         android:background="@color/white"
         android:gravity="center"

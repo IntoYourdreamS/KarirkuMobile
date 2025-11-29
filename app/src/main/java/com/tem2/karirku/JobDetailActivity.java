@@ -9,15 +9,25 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
 
+/**
+ * JobDetailActivity - menampilkan detail lowongan.
+ * Ditambahkan: BottomSheet untuk Kirim Lamaran (catatan) dan fungsi uploadLamaran().
+ */
 public class JobDetailActivity extends AppCompatActivity {
 
     private static final String TAG = "JOB_DETAIL";
@@ -161,6 +171,11 @@ public class JobDetailActivity extends AppCompatActivity {
     }
 
     private void fetchNoTelpFromDatabase() {
+        if (currentJob == null) {
+            Log.e(TAG, "❌ currentJob is null, cannot fetch telephone");
+            return;
+        }
+
         if (currentJob.getIdLowongan() == 0) {
             Log.e(TAG, "❌ Cannot fetch no_telp: Invalid job ID (0)");
             runOnUiThread(() -> {
@@ -241,6 +256,8 @@ public class JobDetailActivity extends AppCompatActivity {
     }
 
     private void setupWhatsAppButton() {
+        if (currentJob == null) return;
+
         String phoneNumber = currentJob.getNoTelp();
 
         Log.d(TAG, "========================================");
@@ -279,9 +296,108 @@ public class JobDetailActivity extends AppCompatActivity {
             }
         });
 
-        btnApply.setOnClickListener(v -> {
-            Toast.makeText(this, "Fitur lamar sedang dikembangkan", Toast.LENGTH_SHORT).show();
+        // Ganti: saat tekan "Lamar Pekerjaan Ini" -> munculkan BottomSheet untuk catatan
+        btnApply.setOnClickListener(v -> showLamaranBottomSheet());
+    }
+
+    /**
+     * Menampilkan BottomSheet dialog untuk input catatan sebelum mengirim lamaran.
+     */
+    private void showLamaranBottomSheet() {
+        if (currentJob == null) {
+            Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.bottomsheet_lamaran, null);
+        dialog.setContentView(view);
+
+        TextInputEditText edtCatatan = view.findViewById(R.id.edtCatatanHRD);
+        MaterialButton btnKirim = view.findViewById(R.id.btnKirimLamaran);
+        MaterialButton btnBatal = view.findViewById(R.id.btnBatalLamaran);
+
+        // Prefill (opsional) contoh: nama posisi singkat
+        edtCatatan.setHint("Contoh: Saya memiliki 3 tahun pengalaman..., saya tersedia Senin-Jumat");
+
+        btnKirim.setOnClickListener(v -> {
+            String catatan = edtCatatan.getText() != null ? edtCatatan.getText().toString().trim() : "";
+            // Validasi opsional (jika mau wajib isi, uncomment)
+            // if (catatan.isEmpty()) { edtCatatan.setError("Harap isi catatan atau tetap kosong jika tidak ada"); return; }
+
+            // Panggil upload (akan dijalankan di thread background)
+            uploadLamaran(catatan);
+
+            dialog.dismiss();
         });
+
+        btnBatal.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+    /**
+     * Upload lamaran ke Supabase (tabel 'lamaran').
+     * Mengirim: id_lowongan, catatan, tanggal (unix millis).
+     */
+    private void uploadLamaran(String catatan) {
+        if (currentJob == null) {
+            Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            JSONObject body = new JSONObject();
+            body.put("id_lowongan", currentJob.getIdLowongan());
+            body.put("catatan", catatan);
+            body.put("tanggal", System.currentTimeMillis());
+
+            // Jalankan di thread agar tidak blocking UI
+            new Thread(() -> {
+                // BUAT VARIABLE FINAL DI LUAR TRY-CATCH
+                final int[] responseCode = {-1};
+
+                try {
+                    URL url = new URL(SUPABASE_URL + "/rest/v1/lamaran");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("apikey", SUPABASE_API_KEY);
+                    connection.setRequestProperty("Authorization", "Bearer " + SUPABASE_API_KEY);
+                    connection.setRequestProperty("Content-Type", "application/json");
+                    connection.setDoOutput(true);
+
+                    byte[] out = body.toString().getBytes("UTF-8");
+                    connection.getOutputStream().write(out);
+
+                    responseCode[0] = connection.getResponseCode();
+                    Log.d(TAG, "Upload lamaran response code: " + responseCode[0]);
+
+                    // Baca response (opsional)
+                    InputStream responseStream = connection.getInputStream();
+                    Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
+                    String response = scanner.hasNext() ? scanner.next() : "";
+                    Log.d(TAG, "Upload lamaran response body: " + response);
+
+                    runOnUiThread(() -> {
+                        if (responseCode[0] == 201 || responseCode[0] == 200) {
+                            Toast.makeText(JobDetailActivity.this, "Lamaran berhasil dikirim!", Toast.LENGTH_LONG).show();
+                            // TODO: bisa tampilkan snackbar atau navigasi
+                        } else {
+                            Toast.makeText(JobDetailActivity.this, "Gagal mengirim lamaran (code " + responseCode[0] + ")", Toast.LENGTH_LONG).show();
+                        }
+                    });
+
+                    connection.disconnect();
+                } catch (Exception e) {
+                    Log.e(TAG, "❌ Error uploadLamaran: " + e.getMessage(), e);
+                    runOnUiThread(() -> Toast.makeText(JobDetailActivity.this, "Error mengirim lamaran: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            }).start();
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Preparing lamaran error: " + e.getMessage(), e);
+            Toast.makeText(this, "Error menyiapkan data lamaran", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void openWhatsApp() {
@@ -360,4 +476,4 @@ public class JobDetailActivity extends AppCompatActivity {
         super.onDestroy();
         Log.d(TAG, "JobDetailActivity destroyed");
     }
-}   
+}

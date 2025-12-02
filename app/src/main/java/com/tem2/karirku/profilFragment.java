@@ -519,7 +519,7 @@ public class profilFragment extends Fragment {
                 try {
                     startActivity(new Intent(getActivity(), UpdateAkunActivity.class));
                 } catch (Exception e) {
-                    Log.e(TAG, "Error opening UserDataActivity: " + e.getMessage());
+                    Log.e(TAG, "Error opening UpdateDataActivity: " + e.getMessage());
                     Toast.makeText(getContext(), "Tidak dapat membuka halaman", Toast.LENGTH_SHORT).show();
                 }
             });

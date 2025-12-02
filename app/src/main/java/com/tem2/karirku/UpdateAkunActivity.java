@@ -108,12 +108,12 @@ public class UpdateAkunActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        Log.d("UPDATE_AKUN", "✅ Update successful - Response: " + response);
+                        Log.d("UPDATE_AKUN", "Update successful - Response: " + response);
 
                         // Update session manager dengan data baru
                         updateSessionData(email, whatsapp);
 
-                        Toast.makeText(UpdateAkunActivity.this, "✅ Akun berhasil diperbarui", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(UpdateAkunActivity.this, "Akun berhasil diperbarui", Toast.LENGTH_SHORT).show();
                         finish();
                     }
                 },

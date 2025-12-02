@@ -545,9 +545,9 @@ public class UserDataActivity extends AppCompatActivity {
         StringRequest updateRequest = new StringRequest(Request.Method.PATCH, url,
                 response -> {
                     progressDialog.dismiss();
-                    Log.d("USER_DATA", "✅ UPDATE successful! Response: " + response);
+                    Log.d("USER_DATA", "UPDATE successful! Response: " + response);
 
-                    Toast.makeText(this, "✅ Data berhasil diperbarui!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Data berhasil diperbarui!", Toast.LENGTH_SHORT).show();
                     sessionManager.updateUserProfile(nama, noHp);
 
                     // Setelah UPDATE berhasil, refresh data

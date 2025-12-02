@@ -26,6 +26,7 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -149,11 +150,15 @@ public class NotificationFragment extends Fragment {
                 JSONObject obj = response.getJSONObject(i);
 
                 String id = obj.optString("id_notifikasi");
-                String title = obj.optString("judul", "Notifikasi");
+
+                // TIDAK ADA KOLOM JUDUL - ambil dari pesan atau buat berdasarkan tipe
                 String message = obj.optString("pesan", "");
                 String type = obj.optString("tipe", "general");
-                boolean isRead = obj.optBoolean("is_read", false);
+                boolean isRead = obj.optBoolean("sudah_dibaca", false);  // ganti is_read -> sudah_dibaca
                 String createdAt = obj.optString("dibuat_pada", "");
+
+                // Ekstrak judul dari pesan atau buat berdasarkan tipe
+                String title = extractTitleFromMessage(message, type);
 
                 // Format waktu
                 String timeAgo = formatTimeAgo(createdAt);
@@ -175,6 +180,45 @@ public class NotificationFragment extends Fragment {
         } catch (Exception e) {
             Log.e("NOTIFICATION", "❌ Parse error: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    // Method baru untuk ekstrak judul dari pesan
+    private String extractTitleFromMessage(String message, String type) {
+        if (message == null || message.isEmpty()) {
+            return "Notifikasi";
+        }
+
+        switch (type) {
+            case "lamaran":
+                return "Lowongan Baru";
+            case "system":
+                // Cek apakah ini notifikasi status lamaran
+                if (message.contains("[STATUS LAMARAN]")) {
+                    if (message.contains("🎉")) return "Lamaran Diterima";
+                    if (message.contains("❌")) return "Lamaran Ditolak";
+                    if (message.contains("📝")) return "Status Lamaran Berubah";
+                    return "Status Lamaran";
+                } else {
+                    return "Sistem";
+                }
+            case "pesan":
+                return "Pesan";
+            case "interview":
+                return "Undangan Interview";
+            case "reminder":
+                return "Pengingat";
+            default:
+                // Ambil 3-5 kata pertama sebagai judul
+                String[] words = message.split("\\s+");
+                if (words.length > 5) {
+                    // Menggunakan Arrays.copyOfRange
+                    return String.join(" ", Arrays.copyOfRange(words, 0, 5)) + "...";
+                } else if (words.length > 0) {
+                    return message;
+                } else {
+                    return "Notifikasi";
+                }
         }
     }
 
@@ -212,13 +256,12 @@ public class NotificationFragment extends Fragment {
 
     private int getIconForType(String type) {
         switch (type) {
-            case "lowongan_baru":
-            case "lowongan_match":
+            case "lamaran":  // Tipe untuk lowongan baru
                 return R.drawable.iconloker;
-            case "application":
-                return R.drawable.ic_success;
-            case "application_status": // Tipe baru untuk status lamaran
+            case "system":   // Tipe untuk status lamaran
                 return R.drawable.ic_application_status;
+            case "pesan":
+                return R.drawable.notification;
             case "interview":
                 return R.drawable.ic_calendar;
             case "job_recommendation":
@@ -241,12 +284,12 @@ public class NotificationFragment extends Fragment {
 
         Log.d("NOTIFICATION", "📝 Marking all notifications as read for user: " + currentUserId);
 
-        // Call Supabase function
-        String url = SUPABASE_URL + "/rest/v1/rpc/mark_all_notifications_read";
+        // Call Supabase function - update dengan kolom yang benar
+        String url = SUPABASE_URL + "/rest/v1/notifikasi?id_pengguna=eq." + currentUserId;
 
         JSONObject body = new JSONObject();
         try {
-            body.put("user_id", currentUserId);
+            body.put("sudah_dibaca", true);  // ganti is_read -> sudah_dibaca
         } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -254,10 +297,16 @@ public class NotificationFragment extends Fragment {
 
         RequestQueue queue = Volley.newRequestQueue(requireContext());
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body,
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.PATCH, url, body,
                 response -> {
                     Log.d("NOTIFICATION", "✅ All notifications marked as read");
-                    notificationAdapter.markAllAsRead();
+
+                    // Update local list
+                    for (NotificationItem item : notificationList) {
+                        item.setRead(true);
+                    }
+                    notificationAdapter.notifyDataSetChanged();
+
                     Toast.makeText(getContext(), "✅ Semua notifikasi ditandai dibaca", Toast.LENGTH_SHORT).show();
                 },
                 error -> {
@@ -270,6 +319,7 @@ public class NotificationFragment extends Fragment {
                 headers.put("apikey", SUPABASE_API_KEY);
                 headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
                 headers.put("Content-Type", "application/json");
+                headers.put("Prefer", "return=minimal");
                 return headers;
             }
         };

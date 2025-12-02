@@ -47,10 +47,12 @@ public class NotificationDetailActivity extends AppCompatActivity {
         if (type == null) return R.drawable.notification;
 
         switch (type) {
-            case "application":
-                return R.drawable.ic_success;
-            case "application_status": // Tipe baru untuk status lamaran
+            case "lamaran":
+                return R.drawable.iconloker;
+            case "system":
                 return R.drawable.ic_application_status;
+            case "pesan":
+                return R.drawable.notification;
             case "interview":
                 return R.drawable.ic_calendar;
             case "job_recommendation":

@@ -23,7 +23,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 
@@ -51,7 +50,6 @@ public class HomeFragment extends Fragment {
     private TextView tabSemua, tabTerbaru, tabTerlama;
     private String currentSearchQuery = "";
 
-    // TAMBAHAN UNTUK RIWAYAT PENCARIAN
     private LinearLayout searchHistoryContainer;
     private RecyclerView recyclerSearchHistory;
     private SearchHistoryAdapter searchHistoryAdapter;
@@ -59,7 +57,8 @@ public class HomeFragment extends Fragment {
     private SessionManager sessionManager;
     private RequestQueue requestQueue;
 
-    private static final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/lowongan?select=*";
+    // PERBAIKAN: URL mengambil data dari perusahaan termasuk nama_perusahaan dan logo
+    private static final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/lowongan?select=*,perusahaan(nama_perusahaan,logo_url,logo_path,id_perusahaan)";
     private static final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
 
     @Override
@@ -67,11 +66,9 @@ public class HomeFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        // INISIALISASI SESSION MANAGER DAN REQUEST QUEUE
         sessionManager = new SessionManager(requireContext());
         requestQueue = Volley.newRequestQueue(requireContext());
 
-        // DEBUG: CEK USER ID
         int userId = sessionManager.getUserId();
         Log.d("HOME_FRAGMENT", "========================================");
         Log.d("HOME_FRAGMENT", "👤 User ID: " + userId);
@@ -88,7 +85,6 @@ public class HomeFragment extends Fragment {
         tabTerlama = view.findViewById(R.id.tab_terlama);
         imgProfile = view.findViewById(R.id.imgprofile);
 
-        // INISIALISASI RIWAYAT PENCARIAN
         searchHistoryContainer = view.findViewById(R.id.searchHistoryContainer);
         recyclerSearchHistory = view.findViewById(R.id.recyclerSearchHistory);
         setupSearchHistoryRecycler();
@@ -104,7 +100,6 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        // TAMBAHKAN ONCLICKLISTENER UNTUK PROFILE IMAGE
         imgProfile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -114,10 +109,9 @@ public class HomeFragment extends Fragment {
 
         loadLowonganFromAPI();
         setupSearchListener();
-        loadProfileImage(); // PERBAIKAN: Panggil method yang sudah diperbaiki
-        loadSearchHistory(); // LOAD RIWAYAT PENCARIAN
+        loadProfileImage();
+        loadSearchHistory();
 
-        // Setup tab clicks
         View.OnClickListener tabClickListener = v -> {
             resetTabs();
             ((TextView) v).setBackgroundResource(R.drawable.selected);
@@ -139,14 +133,12 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
-    // PERBAIKAN: METHOD loadProfileImage YANG SUDAH DIPERBAIKI
     private void loadProfileImage() {
         int userId = sessionManager.getUserId();
         Log.d("PROFILE_IMAGE", "Load profile image for user ID: " + userId);
 
         String url = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/pencaker?id_pengguna=eq." + userId + "&select=foto_profil_url";
 
-        // PERBAIKAN: Gunakan requireContext() karena di Fragment
         RequestQueue queue = Volley.newRequestQueue(requireContext());
 
         JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null,
@@ -159,11 +151,10 @@ public class HomeFragment extends Fragment {
                             if (!fotoUrl.isEmpty()) {
                                 Log.d("PROFILE_IMAGE", "✅ Load image from pencaker: " + fotoUrl);
 
-                                // PERBAIKAN: Gunakan requireContext() untuk Glide di Fragment
                                 Glide.with(requireContext())
                                         .load(fotoUrl)
                                         .circleCrop()
-                                        .error(R.drawable.ic_profile_placeholder) // Fallback jika error loading
+                                        .error(R.drawable.ic_profile_placeholder)
                                         .into(imgProfile);
                             } else {
                                 Log.d("PROFILE_IMAGE", "ℹ️ No profile image in pencaker table");
@@ -203,13 +194,11 @@ public class HomeFragment extends Fragment {
         imgProfile.setImageResource(R.drawable.ic_profile_placeholder);
     }
 
-    // METHOD BARU UNTUK MEMBUKA UserDataActivity
     private void openUserDataActivity() {
         Intent intent = new Intent(getActivity(), UserDataActivity.class);
         startActivity(intent);
     }
 
-    // SETUP RECYCLERVIEW UNTUK RIWAYAT PENCARIAN
     private void setupSearchHistoryRecycler() {
         recyclerSearchHistory.setLayoutManager(new LinearLayoutManager(requireContext()));
         searchHistoryAdapter = new SearchHistoryAdapter(searchHistoryList, new SearchHistoryAdapter.OnHistoryClickListener() {
@@ -218,7 +207,6 @@ public class HomeFragment extends Fragment {
                 searchEditText.setText(keyword);
                 searchEditText.setSelection(keyword.length());
                 hideSearchHistory();
-                // Tidak perlu save lagi karena keyword sudah ada di history
                 performSearch(keyword);
             }
 
@@ -230,7 +218,6 @@ public class HomeFragment extends Fragment {
         recyclerSearchHistory.setAdapter(searchHistoryAdapter);
     }
 
-    // SHOW/HIDE RIWAYAT PENCARIAN
     private void showSearchHistory() {
         if (!searchHistoryList.isEmpty()) {
             searchHistoryContainer.setVisibility(View.VISIBLE);
@@ -241,7 +228,6 @@ public class HomeFragment extends Fragment {
         searchHistoryContainer.setVisibility(View.GONE);
     }
 
-    // LOAD 3 RIWAYAT PENCARIAN TERBARU
     private void loadSearchHistory() {
         int userId = sessionManager.getUserId();
 
@@ -253,9 +239,7 @@ public class HomeFragment extends Fragment {
         String url = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/riwayat_pencarian?id_pengguna=eq." + userId
                 + "&select=keyword&order=dibuat_pada.desc&limit=3";
 
-        Log.d("SEARCH_HISTORY", "========================================");
         Log.d("SEARCH_HISTORY", "📥 Loading history for user ID: " + userId);
-        Log.d("SEARCH_HISTORY", "URL: " + url);
 
         JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null,
                 response -> {
@@ -272,18 +256,10 @@ public class HomeFragment extends Fragment {
                         Log.d("SEARCH_HISTORY", "✅ Total loaded: " + searchHistoryList.size() + " history items");
                     } catch (JSONException e) {
                         Log.e("SEARCH_HISTORY", "❌ Error parsing JSON: " + e.getMessage());
-                        e.printStackTrace();
                     }
                 },
                 error -> {
-                    Log.e("SEARCH_HISTORY", "========================================");
-                    Log.e("SEARCH_HISTORY", "❌ Error loading history:");
-                    Log.e("SEARCH_HISTORY", "Error: " + error.toString());
-                    if (error.networkResponse != null) {
-                        Log.e("SEARCH_HISTORY", "Status Code: " + error.networkResponse.statusCode);
-                        Log.e("SEARCH_HISTORY", "Response: " + new String(error.networkResponse.data));
-                    }
-                    Log.e("SEARCH_HISTORY", "========================================");
+                    Log.e("SEARCH_HISTORY", "❌ Error loading history: " + error.toString());
                 }
         ) {
             @Override
@@ -299,7 +275,6 @@ public class HomeFragment extends Fragment {
         requestQueue.add(request);
     }
 
-    // SIMPAN RIWAYAT PENCARIAN KE DATABASE
     private void saveSearchHistory(String keyword) {
         if (keyword.trim().isEmpty()) {
             Log.w("SEARCH_HISTORY", "⚠️ Keyword is empty, skipping save");
@@ -314,9 +289,7 @@ public class HomeFragment extends Fragment {
             return;
         }
 
-        Log.d("SEARCH_HISTORY", "========================================");
         Log.d("SEARCH_HISTORY", "💾 Saving keyword: '" + keyword + "'");
-        Log.d("SEARCH_HISTORY", "User ID: " + userId);
 
         String url = "https://tkjnbelcgfwpbhppsnrl.supabase.co/rest/v1/riwayat_pencarian";
 
@@ -332,27 +305,13 @@ public class HomeFragment extends Fragment {
 
         final String requestBody = bodyObject.toString();
 
-        // GUNAKAN JsonArrayRequest TAPI OVERRIDE getBody()
         JsonArrayRequest request = new JsonArrayRequest(Request.Method.POST, url, null,
                 response -> {
-                    Log.d("SEARCH_HISTORY", "========================================");
                     Log.d("SEARCH_HISTORY", "✅ Keyword saved successfully!");
-                    Log.d("SEARCH_HISTORY", "Response: " + response.toString());
-                    Log.d("SEARCH_HISTORY", "========================================");
-                    loadSearchHistory(); // Reload untuk update list
+                    loadSearchHistory();
                 },
                 error -> {
-                    Log.e("SEARCH_HISTORY", "========================================");
-                    Log.e("SEARCH_HISTORY", "❌ Error saving keyword:");
-                    Log.e("SEARCH_HISTORY", "Error: " + error.toString());
-                    if (error.networkResponse != null) {
-                        Log.e("SEARCH_HISTORY", "Status Code: " + error.networkResponse.statusCode);
-                        String responseBody = new String(error.networkResponse.data);
-                        Log.e("SEARCH_HISTORY", "Response: " + responseBody);
-                    } else {
-                        Log.e("SEARCH_HISTORY", "Network error, no response");
-                    }
-                    Log.e("SEARCH_HISTORY", "========================================");
+                    Log.e("SEARCH_HISTORY", "❌ Error saving keyword: " + error.toString());
                 }
         ) {
             @Override
@@ -362,7 +321,6 @@ public class HomeFragment extends Fragment {
                 headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
                 headers.put("Content-Type", "application/json");
                 headers.put("Prefer", "return=representation");
-                Log.d("SEARCH_HISTORY", "📤 Headers: " + headers.toString());
                 return headers;
             }
 
@@ -379,7 +337,6 @@ public class HomeFragment extends Fragment {
         requestQueue.add(request);
     }
 
-    // HAPUS RIWAYAT PENCARIAN
     private void deleteSearchHistory(String keyword, int position) {
         int userId = sessionManager.getUserId();
 
@@ -452,7 +409,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupSearchListener() {
-        // SHOW RIWAYAT SAAT FIELD DIKLIK
         searchEditText.setOnClickListener(v -> {
             Log.d("SEARCH_LISTENER", "🖱️ Search field clicked");
             if (!searchHistoryList.isEmpty() && searchEditText.getText().toString().trim().isEmpty()) {
@@ -461,25 +417,22 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        // HANDLE ENTER/SEARCH BUTTON
         searchEditText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                     (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
 
                 String keyword = searchEditText.getText().toString().trim();
-                Log.d("SEARCH_LISTENER", "========================================");
                 Log.d("SEARCH_LISTENER", "⌨️ Enter/Search pressed!");
                 Log.d("SEARCH_LISTENER", "Keyword: '" + keyword + "'");
 
                 if (!keyword.isEmpty()) {
                     Log.d("SEARCH_LISTENER", "💾 Calling saveSearchHistory()...");
-                    saveSearchHistory(keyword); // SIMPAN KE DATABASE
+                    saveSearchHistory(keyword);
                     hideSearchHistory();
                     searchEditText.clearFocus();
                 } else {
                     Log.d("SEARCH_LISTENER", "⚠️ Keyword is empty, not saving");
                 }
-                Log.d("SEARCH_LISTENER", "========================================");
                 return true;
             }
             return false;
@@ -494,7 +447,6 @@ public class HomeFragment extends Fragment {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 currentSearchQuery = s.toString().trim();
 
-                // SHOW/HIDE RIWAYAT BERDASARKAN TEXT
                 if (currentSearchQuery.isEmpty() && searchEditText.hasFocus() && !searchHistoryList.isEmpty()) {
                     showSearchHistory();
                 } else {
@@ -585,6 +537,7 @@ public class HomeFragment extends Fragment {
         queue.add(request);
     }
 
+    // PERBAIKAN: Parsing response untuk mengambil nama_perusahaan dari perusahaan
     private void parseResponse(JSONArray response) {
         Log.d("SUPABASE_DATA", "📦 Total data dari Supabase: " + response.length());
 
@@ -603,7 +556,9 @@ public class HomeFragment extends Fragment {
                 String kategori = obj.optString("kategori", "-");
                 String tipe = obj.optString("tipe_pekerjaan", "-");
                 String gaji = obj.optString("gaji_range", "-");
-                String namaPerusahaan = obj.optString("nama_perusahaan", "Perusahaan");
+
+                // PERBAIKAN: Ambil nama_perusahaan dari tabel perusahaan
+                String namaPerusahaan = "Perusahaan"; // default
                 String deskripsi = obj.optString("deskripsi", "");
                 String kualifikasi = obj.optString("kualifikasi", "");
                 String noTelp = obj.optString("no_telp", "");
@@ -611,9 +566,28 @@ public class HomeFragment extends Fragment {
                 String benefit = obj.optString("benefit", "");
                 String dibuatPada = formatPostedTime(obj.optString("dibuat_pada", ""));
 
+                // TAMBAHAN: Ambil data logo perusahaan dan nama perusahaan
+                String logoUrl = "";
+                String logoPath = "";
+                int idPerusahaan = 0;
+
+                // Coba ambil dari objek perusahaan jika ada
+                if (obj.has("perusahaan")) {
+                    try {
+                        JSONObject perusahaan = obj.getJSONObject("perusahaan");
+                        namaPerusahaan = perusahaan.optString("nama_perusahaan", "Perusahaan"); // Ambil dari perusahaan
+                        logoUrl = perusahaan.optString("logo_url", "");
+                        logoPath = perusahaan.optString("logo_path", "");
+                        idPerusahaan = perusahaan.optInt("id_perusahaan", 0);
+                        Log.d("SUPABASE_DATA", "✅ Found company data - Name: " + namaPerusahaan + ", Logo URL: " + logoUrl);
+                    } catch (JSONException e) {
+                        Log.e("SUPABASE_DATA", "❌ Error parsing perusahaan data: " + e.getMessage());
+                    }
+                }
+
                 Job job = new Job(
                         idLowongan,
-                        namaPerusahaan,
+                        namaPerusahaan, // Sekarang menggunakan nama dari tabel perusahaan
                         lokasi,
                         judul,
                         dibuatPada,
@@ -625,13 +599,17 @@ public class HomeFragment extends Fragment {
                         deskripsi,
                         kualifikasi,
                         benefit,
-                        noTelp
+                        noTelp,
+                        logoUrl,
+                        logoPath,
+                        idPerusahaan
                 );
 
                 jobList.add(job);
 
                 Log.d("SUPABASE_DATA", "✅ Loaded Job - ID: " + idLowongan +
-                        ", Title: " + judul + ", Company: " + namaPerusahaan);
+                        ", Title: " + judul + ", Company: " + namaPerusahaan +
+                        ", Logo URL: " + logoUrl);
 
             } catch (JSONException e) {
                 Log.e("JSON_ERROR", "Parsing gagal: " + e.getMessage());

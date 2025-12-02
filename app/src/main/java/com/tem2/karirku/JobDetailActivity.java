@@ -12,22 +12,26 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * JobDetailActivity - menampilkan detail lowongan.
- * Ditambahkan: BottomSheet untuk Kirim Lamaran (catatan) dan fungsi uploadLamaran().
- */
 public class JobDetailActivity extends AppCompatActivity {
 
     private static final String TAG = "JOB_DETAIL";
@@ -41,6 +45,11 @@ public class JobDetailActivity extends AppCompatActivity {
     private Button btnApply;
 
     private Job currentJob;
+    private SessionManager sessionManager;
+    private RequestQueue requestQueue;
+    private int currentPencakerId = 0;
+    private String currentCvUrl = "";
+    private boolean hasApplied = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +57,10 @@ public class JobDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_job_detail);
 
         try {
+            sessionManager = new SessionManager(this);
+            requestQueue = Volley.newRequestQueue(this);
             initViews();
+            loadPencakerAndCV();
             loadJobData();
             setupClickListeners();
         } catch (Exception e) {
@@ -73,7 +85,233 @@ public class JobDetailActivity extends AppCompatActivity {
         tvWorkingHours = findViewById(R.id.tvWorkingHours);
         tvExpertise = findViewById(R.id.tvExpertise);
         btnWhatsApp = findViewById(R.id.btnWhatsApp);
-        btnApply = findViewById(R.id.btnApplywa);
+        btnApply = findViewById(R.id.btnApply);
+    }
+
+    private void loadPencakerAndCV() {
+        if (!sessionManager.isLoggedIn()) {
+            Log.e(TAG, "❌ User not logged in");
+            Toast.makeText(this, "Silakan login terlebih dahulu", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        int userId = sessionManager.getUserId();
+        Log.d(TAG, "🔍 Loading pencaker data for user ID: " + userId);
+
+        String pencakerUrl = SUPABASE_URL + "/rest/v1/pencaker?select=id_pencaker&id_pengguna=eq." + userId;
+
+        JsonArrayRequest pencakerRequest = new JsonArrayRequest(
+                Request.Method.GET,
+                pencakerUrl,
+                null,
+                response -> {
+                    Log.d(TAG, "📨 Pencaker API Response: " + response.toString());
+                    try {
+                        if (response.length() > 0) {
+                            JSONObject pencakerData = response.getJSONObject(0);
+                            currentPencakerId = pencakerData.getInt("id_pencaker");
+                            Log.d(TAG, "✅ Loaded pencaker ID: " + currentPencakerId);
+                            loadCVUrl();
+                            checkIfAlreadyApplied();
+                        } else {
+                            Log.e(TAG, "❌ No pencaker data found for user");
+                            runOnUiThread(() -> {
+                                Toast.makeText(JobDetailActivity.this, "Data profil tidak lengkap. Silakan lengkapi profil terlebih dahulu.", Toast.LENGTH_LONG).show();
+                                btnApply.setEnabled(false);
+                                btnApply.setAlpha(0.5f);
+                                btnApply.setText("Lamar (Lengkapi Profil)");
+                            });
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Error parsing pencaker data: " + e.getMessage());
+                        runOnUiThread(() -> {
+                            Toast.makeText(JobDetailActivity.this, "Error memuat data profil", Toast.LENGTH_LONG).show();
+                            btnApply.setEnabled(false);
+                            btnApply.setAlpha(0.5f);
+                            btnApply.setText("Lamar (Error)");
+                        });
+                    }
+                },
+                error -> {
+                    Log.e(TAG, "❌ Volley error loading pencaker: " + error.toString());
+                    runOnUiThread(() -> {
+                        Toast.makeText(JobDetailActivity.this, "Gagal memuat data profil", Toast.LENGTH_LONG).show();
+                        btnApply.setEnabled(false);
+                        btnApply.setAlpha(0.5f);
+                        btnApply.setText("Lamar (Error Load Profil)");
+                    });
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+        };
+
+        requestQueue.add(pencakerRequest);
+    }
+
+    private void checkIfAlreadyApplied() {
+        if (currentPencakerId == 0 || currentJob == null) {
+            Log.d(TAG, "⚠️ Cannot check application status: pencakerId or job is null");
+            return;
+        }
+
+        String url = SUPABASE_URL + "/rest/v1/lamaran?select=id_lamaran&id_pencaker=eq." + currentPencakerId + "&id_lowongan=eq." + currentJob.getIdLowongan();
+
+        Log.d(TAG, "🔍 Checking application status: " + url);
+
+        JsonArrayRequest request = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                response -> {
+                    try {
+                        if (response.length() > 0) {
+                            hasApplied = true;
+                            runOnUiThread(() -> {
+                                btnApply.setEnabled(false);
+                                btnApply.setAlpha(0.5f);
+                                btnApply.setText("✓ Telah Dilamar");
+                                Log.d(TAG, "✅ User has already applied for this job");
+                            });
+                        } else {
+                            hasApplied = false;
+                            Log.d(TAG, "✅ User has not applied for this job yet");
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Error checking application status: " + e.getMessage());
+                    }
+                },
+                error -> {
+                    Log.e(TAG, "❌ Error checking application status: " + error.toString());
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+        };
+
+        requestQueue.add(request);
+    }
+
+    private void loadCVUrl() {
+        if (currentPencakerId == 0) {
+            Log.e(TAG, "❌ Cannot load CV: Invalid pencaker ID");
+            runOnUiThread(() -> {
+                Toast.makeText(JobDetailActivity.this, "Data profil tidak valid", Toast.LENGTH_LONG).show();
+                btnApply.setEnabled(false);
+                btnApply.setAlpha(0.5f);
+                btnApply.setText("Lamar (Profil Invalid)");
+            });
+            return;
+        }
+
+        String cvUrl = SUPABASE_URL + "/rest/v1/cv?select=*&id_pencaker=eq." + currentPencakerId;
+        Log.d(TAG, "🔍 CV API URL: " + cvUrl);
+
+        JsonArrayRequest cvRequest = new JsonArrayRequest(
+                Request.Method.GET,
+                cvUrl,
+                null,
+                response -> {
+                    Log.d(TAG, "📨 CV API Response: " + response.toString());
+                    try {
+                        if (response.length() > 0) {
+                            JSONObject cvData = response.getJSONObject(0);
+
+                            if (cvData.has("cv_url")) {
+                                currentCvUrl = cvData.getString("cv_url");
+                            } else if (cvData.has("url")) {
+                                currentCvUrl = cvData.getString("url");
+                            } else if (cvData.has("file_url")) {
+                                currentCvUrl = cvData.getString("file_url");
+                            } else {
+                                for (String key : new String[]{"cv_url", "url", "file_url", "document_url"}) {
+                                    if (cvData.has(key) && cvData.getString(key) != null &&
+                                            !cvData.getString(key).isEmpty()) {
+                                        currentCvUrl = cvData.getString(key);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            String fileName = cvData.optString("nama_file", "");
+                            String uploadedAt = cvData.optString("uploaded_at", "");
+
+                            runOnUiThread(() -> {
+                                if (currentCvUrl != null && !currentCvUrl.trim().isEmpty()) {
+                                    Log.d(TAG, "✅ Loaded CV URL: " + currentCvUrl);
+
+                                    if (!hasApplied) {
+                                        btnApply.setEnabled(true);
+                                        btnApply.setAlpha(1.0f);
+                                        btnApply.setText("Lamar Pekerjaan Ini");
+                                    }
+
+                                    Toast.makeText(JobDetailActivity.this,
+                                            "CV siap: " + (fileName.isEmpty() ? getFileNameFromUrl(currentCvUrl) : fileName),
+                                            Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Log.w(TAG, "⚠️ CV URL is empty in database");
+                                    btnApply.setEnabled(false);
+                                    btnApply.setAlpha(0.5f);
+                                    btnApply.setText("Lamar (Upload CV Dulu)");
+                                    Toast.makeText(JobDetailActivity.this,
+                                            "CV tidak valid. Silakan upload ulang CV.", Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        } else {
+                            runOnUiThread(() -> {
+                                Log.w(TAG, "⚠️ No CV found for pencaker ID: " + currentPencakerId);
+                                btnApply.setEnabled(false);
+                                btnApply.setAlpha(0.5f);
+                                btnApply.setText("Lamar (Upload CV Dulu)");
+                                Toast.makeText(JobDetailActivity.this,
+                                        "Silakan upload CV terlebih dahulu sebelum melamar", Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Error parsing CV data: " + e.getMessage());
+                        runOnUiThread(() -> {
+                            Toast.makeText(JobDetailActivity.this, "Error memuat data CV", Toast.LENGTH_LONG).show();
+                            btnApply.setEnabled(false);
+                            btnApply.setAlpha(0.5f);
+                            btnApply.setText("Lamar (Error)");
+                        });
+                    }
+                },
+                error -> {
+                    Log.e(TAG, "❌ Volley error loading CV: " + error.toString());
+                    runOnUiThread(() -> {
+                        Toast.makeText(JobDetailActivity.this, "Gagal memuat data CV", Toast.LENGTH_LONG).show();
+                        btnApply.setEnabled(false);
+                        btnApply.setAlpha(0.5f);
+                        btnApply.setText("Lamar (Error Load CV)");
+                    });
+                }
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+        };
+
+        requestQueue.add(cvRequest);
     }
 
     private void loadJobData() {
@@ -87,28 +325,23 @@ public class JobDetailActivity extends AppCompatActivity {
                     Log.d(TAG, "Loading job data: " + currentJob.toString());
                     Log.d(TAG, "========================================");
 
-                    // Set basic job info
                     tvJobTitle.setText(currentJob.getJobTitle() != null ? currentJob.getJobTitle() : "Judul tidak tersedia");
                     tvCompanyName.setText(currentJob.getCompanyName() != null ? currentJob.getCompanyName() : "Perusahaan tidak tersedia");
                     tvLocation.setText(currentJob.getLocation() != null ? currentJob.getLocation() : "Lokasi tidak tersedia");
 
-                    // Set tags dengan null safety
                     tvTag1.setText(currentJob.getTag1() != null ? currentJob.getTag1() : "");
                     tvTag2.setText(currentJob.getTag2() != null ? currentJob.getTag2() : "");
                     tvTag3.setText(currentJob.getTag3() != null ? currentJob.getTag3() : "");
 
-                    // Sembunyikan tag yang kosong
                     tvTag1.setVisibility(currentJob.getTag1() != null && !currentJob.getTag1().isEmpty() ? View.VISIBLE : View.GONE);
                     tvTag2.setVisibility(currentJob.getTag2() != null && !currentJob.getTag2().isEmpty() ? View.VISIBLE : View.GONE);
                     tvTag3.setVisibility(currentJob.getTag3() != null && !currentJob.getTag3().isEmpty() ? View.VISIBLE : View.GONE);
 
-                    // Set job details grid
                     tvJobTypeValue.setText(currentJob.getTipePekerjaan() != null ? currentJob.getTipePekerjaan() : "Full Time");
                     tvSalary.setText(currentJob.getGajiRange() != null ? currentJob.getGajiRange() : "Dirahasiakan");
                     tvWorkingHours.setText(currentJob.getModeKerja() != null ? currentJob.getModeKerja() : "Fleksibel");
                     tvExpertise.setText(currentJob.getTag1() != null ? currentJob.getTag1() : "Menyesuaikan");
 
-                    // Set deskripsi
                     String description = currentJob.getDeskripsi();
                     if (description != null && !description.isEmpty()) {
                         tvJobDescription.setText(description);
@@ -120,7 +353,6 @@ public class JobDetailActivity extends AppCompatActivity {
                                 "Bergabunglah dengan tim kami yang dinamis dan berkembang pesat.");
                     }
 
-                    // Set kualifikasi
                     String kualifikasi = currentJob.getKualifikasi();
                     if (kualifikasi != null && !kualifikasi.isEmpty()) {
                         tvRequirements.setText(kualifikasi);
@@ -149,11 +381,17 @@ public class JobDetailActivity extends AppCompatActivity {
                         tvRequirements.setText(defaultRequirements.toString());
                     }
 
-                    // Jika noTelp kosong, fetch dari database
+                    // TAMBAHAN: Load company logo
+                    loadCompanyLogo();
+
                     if (currentJob.getNoTelp() == null || currentJob.getNoTelp().isEmpty()) {
                         fetchNoTelpFromDatabase();
                     } else {
                         setupWhatsAppButton();
+                    }
+
+                    if (currentPencakerId != 0) {
+                        checkIfAlreadyApplied();
                     }
                 } else {
                     Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
@@ -168,6 +406,59 @@ public class JobDetailActivity extends AppCompatActivity {
             Toast.makeText(this, "Gagal memuat data lowongan", Toast.LENGTH_SHORT).show();
             finish();
         }
+    }
+
+    /**
+     * TAMBAHAN: Method untuk memuat logo perusahaan di halaman detail
+     */
+    private void loadCompanyLogo() {
+        if (currentJob == null) {
+            Log.w(TAG, "⚠️ currentJob is null, cannot load logo");
+            return;
+        }
+
+        String logoUrl = currentJob.getLogoUrl();
+        String logoPath = currentJob.getLogoPath();
+
+        Log.d(TAG, "🖼️ Loading company logo for: " + currentJob.getCompanyName());
+        Log.d(TAG, "   Logo URL: " + logoUrl);
+        Log.d(TAG, "   Logo Path: " + logoPath);
+
+        ImageView imgCompanyLogo = findViewById(R.id.imgCompanyLogo);
+
+        // Prioritaskan logo_url jika ada
+        if (logoUrl != null && !logoUrl.trim().isEmpty()) {
+            Log.d(TAG, "✅ Using logo_url: " + logoUrl);
+            Glide.with(this)
+                    .load(logoUrl)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(R.drawable.iconloker)
+                    .error(R.drawable.iconloker)
+                    .into(imgCompanyLogo);
+        }
+        // Jika logo_url tidak ada, coba gunakan logo_path
+        else if (logoPath != null && !logoPath.trim().isEmpty()) {
+            String builtUrl = buildLogoUrlFromPath(logoPath);
+            Log.d(TAG, "🔄 Built URL from path: " + builtUrl);
+            Glide.with(this)
+                    .load(builtUrl)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(R.drawable.iconloker)
+                    .error(R.drawable.iconloker)
+                    .into(imgCompanyLogo);
+        }
+        // Jika tidak ada logo, gunakan default
+        else {
+            Log.d(TAG, "⚠️ No logo available, using default");
+            imgCompanyLogo.setImageResource(R.drawable.iconloker);
+        }
+    }
+
+    /**
+     * TAMBAHAN: Build URL dari logo_path
+     */
+    private String buildLogoUrlFromPath(String logoPath) {
+        return "https://tkjnbelcgfwpbhppsnrl.supabase.co/storage/v1/object/public/" + logoPath;
     }
 
     private void fetchNoTelpFromDatabase() {
@@ -185,74 +476,62 @@ public class JobDetailActivity extends AppCompatActivity {
             return;
         }
 
-        new Thread(() -> {
-            try {
-                String url = SUPABASE_URL + "/rest/v1/lowongan?select=no_telp&id_lowongan=eq." + currentJob.getIdLowongan();
+        String url = SUPABASE_URL + "/rest/v1/lowongan?select=no_telp&id_lowongan=eq." + currentJob.getIdLowongan();
 
-                Log.d(TAG, "🔍 Fetching no_telp from URL: " + url);
+        JsonArrayRequest request = new JsonArrayRequest(
+                Request.Method.GET,
+                url,
+                null,
+                response -> {
+                    try {
+                        if (response.length() > 0) {
+                            JSONObject jobData = response.getJSONObject(0);
+                            String phoneNumber = jobData.optString("no_telp", "");
 
-                HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("apikey", SUPABASE_API_KEY);
-                connection.setRequestProperty("Authorization", "Bearer " + SUPABASE_API_KEY);
-                connection.setRequestProperty("Content-Type", "application/json");
-
-                int responseCode = connection.getResponseCode();
-                Log.d(TAG, "🔍 Fetch no_telp - Response Code: " + responseCode);
-
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    InputStream responseStream = connection.getInputStream();
-                    Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
-                    String response = scanner.hasNext() ? scanner.next() : "";
-
-                    Log.d(TAG, "📨 API Response for no_telp: " + response);
-
-                    if (response == null || response.trim().isEmpty() || response.equals("[]")) {
-                        Log.e(TAG, "❌ Empty response from API for job ID: " + currentJob.getIdLowongan());
-                        runOnUiThread(() -> {
-                            currentJob.setNoTelp("");
-                            setupWhatsAppButton();
-                        });
-                        return;
-                    }
-
-                    JSONArray jsonArray = new JSONArray(response);
-                    if (jsonArray.length() > 0) {
-                        JSONObject jobData = jsonArray.getJSONObject(0);
-                        String phoneNumber = jobData.optString("no_telp", "");
-
-                        runOnUiThread(() -> {
-                            if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
-                                currentJob.setNoTelp(phoneNumber);
-                                Log.d(TAG, "✅ Fetched no_telp from database: " + phoneNumber);
-                            } else {
-                                Log.w(TAG, "⚠️ No telephone number found for job ID: " + currentJob.getIdLowongan());
+                            runOnUiThread(() -> {
+                                if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+                                    currentJob.setNoTelp(phoneNumber);
+                                    Log.d(TAG, "✅ Fetched no_telp from database: " + phoneNumber);
+                                } else {
+                                    Log.w(TAG, "⚠️ No telephone number found for job ID: " + currentJob.getIdLowongan());
+                                    currentJob.setNoTelp("");
+                                }
+                                setupWhatsAppButton();
+                            });
+                        } else {
+                            runOnUiThread(() -> {
+                                Log.e(TAG, "❌ No data found for job ID: " + currentJob.getIdLowongan());
                                 currentJob.setNoTelp("");
-                            }
-                            setupWhatsAppButton();
-                        });
-                    } else {
+                                setupWhatsAppButton();
+                            });
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Error fetching no_telp: " + e.getMessage());
                         runOnUiThread(() -> {
-                            Log.e(TAG, "❌ No data found for job ID: " + currentJob.getIdLowongan());
                             currentJob.setNoTelp("");
                             setupWhatsAppButton();
                         });
                     }
-                } else {
-                    Log.e(TAG, "❌ HTTP Error fetching no_telp: " + responseCode);
+                },
+                error -> {
+                    Log.e(TAG, "❌ Error fetching no_telp: " + error.toString());
                     runOnUiThread(() -> {
                         currentJob.setNoTelp("");
                         setupWhatsAppButton();
                     });
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "❌ Error fetching no_telp: " + e.getMessage());
-                runOnUiThread(() -> {
-                    currentJob.setNoTelp("");
-                    setupWhatsAppButton();
-                });
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                return headers;
             }
-        }).start();
+        };
+
+        requestQueue.add(request);
     }
 
     private void setupWhatsAppButton() {
@@ -296,16 +575,45 @@ public class JobDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Ganti: saat tekan "Lamar Pekerjaan Ini" -> munculkan BottomSheet untuk catatan
-        btnApply.setOnClickListener(v -> showLamaranBottomSheet());
+        btnApply.setOnClickListener(v -> {
+            if (hasApplied) {
+                Toast.makeText(this, "Anda sudah melamar lowongan ini", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            if (!btnApply.isEnabled()) {
+                String currentText = btnApply.getText().toString();
+                if (currentText.contains("Upload CV")) {
+                    Toast.makeText(this, "Silakan upload CV terlebih dahulu sebelum melamar", Toast.LENGTH_LONG).show();
+                } else if (currentText.contains("Profil")) {
+                    Toast.makeText(this, "Silakan lengkapi profil terlebih dahulu", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Tidak dapat melamar saat ini", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+            showLamaranBottomSheet();
+        });
     }
 
-    /**
-     * Menampilkan BottomSheet dialog untuk input catatan sebelum mengirim lamaran.
-     */
     private void showLamaranBottomSheet() {
         if (currentJob == null) {
             Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentPencakerId == 0) {
+            Toast.makeText(this, "Data profil tidak valid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentCvUrl == null || currentCvUrl.trim().isEmpty()) {
+            Toast.makeText(this, "CV tidak tersedia. Silakan upload CV terlebih dahulu.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (hasApplied) {
+            Toast.makeText(this, "Anda sudah melamar lowongan ini", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -317,17 +625,18 @@ public class JobDetailActivity extends AppCompatActivity {
         MaterialButton btnKirim = view.findViewById(R.id.btnKirimLamaran);
         MaterialButton btnBatal = view.findViewById(R.id.btnBatalLamaran);
 
-        // Prefill (opsional) contoh: nama posisi singkat
-        edtCatatan.setHint("Contoh: Saya memiliki 3 tahun pengalaman..., saya tersedia Senin-Jumat");
+        String fileName = getFileNameFromUrl(currentCvUrl);
+        Toast.makeText(this, "CV yang akan dikirim: " + fileName, Toast.LENGTH_LONG).show();
 
         btnKirim.setOnClickListener(v -> {
             String catatan = edtCatatan.getText() != null ? edtCatatan.getText().toString().trim() : "";
-            // Validasi opsional (jika mau wajib isi, uncomment)
-            // if (catatan.isEmpty()) { edtCatatan.setError("Harap isi catatan atau tetap kosong jika tidak ada"); return; }
 
-            // Panggil upload (akan dijalankan di thread background)
+            if (catatan.isEmpty()) {
+                catatan = "Tidak ada catatan tambahan";
+            }
+
+            Toast.makeText(JobDetailActivity.this, "Mengirim lamaran dengan CV: " + fileName, Toast.LENGTH_SHORT).show();
             uploadLamaran(catatan);
-
             dialog.dismiss();
         });
 
@@ -336,67 +645,136 @@ public class JobDetailActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    /**
-     * Upload lamaran ke Supabase (tabel 'lamaran').
-     * Mengirim: id_lowongan, catatan, tanggal (unix millis).
-     */
     private void uploadLamaran(String catatan) {
-        if (currentJob == null) {
-            Toast.makeText(this, "Data lowongan tidak tersedia", Toast.LENGTH_SHORT).show();
+        if (currentJob == null || currentPencakerId == 0 || currentCvUrl == null || currentCvUrl.trim().isEmpty()) {
+            Toast.makeText(this, "Data tidak lengkap untuk mengirim lamaran", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        if (hasApplied) {
+            Toast.makeText(this, "Anda sudah melamar lowongan ini", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String url = SUPABASE_URL + "/rest/v1/lamaran";
+
+        JSONObject body = new JSONObject();
         try {
-            JSONObject body = new JSONObject();
             body.put("id_lowongan", currentJob.getIdLowongan());
+            body.put("id_pencaker", currentPencakerId);
+            body.put("cv_url", currentCvUrl);
             body.put("catatan", catatan);
-            body.put("tanggal", System.currentTimeMillis());
+            body.put("status", "diproses");
 
-            // Jalankan di thread agar tidak blocking UI
-            new Thread(() -> {
-                // BUAT VARIABLE FINAL DI LUAR TRY-CATCH
-                final int[] responseCode = {-1};
-
-                try {
-                    URL url = new URL(SUPABASE_URL + "/rest/v1/lamaran");
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestMethod("POST");
-                    connection.setRequestProperty("apikey", SUPABASE_API_KEY);
-                    connection.setRequestProperty("Authorization", "Bearer " + SUPABASE_API_KEY);
-                    connection.setRequestProperty("Content-Type", "application/json");
-                    connection.setDoOutput(true);
-
-                    byte[] out = body.toString().getBytes("UTF-8");
-                    connection.getOutputStream().write(out);
-
-                    responseCode[0] = connection.getResponseCode();
-                    Log.d(TAG, "Upload lamaran response code: " + responseCode[0]);
-
-                    // Baca response (opsional)
-                    InputStream responseStream = connection.getInputStream();
-                    Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
-                    String response = scanner.hasNext() ? scanner.next() : "";
-                    Log.d(TAG, "Upload lamaran response body: " + response);
-
-                    runOnUiThread(() -> {
-                        if (responseCode[0] == 201 || responseCode[0] == 200) {
-                            Toast.makeText(JobDetailActivity.this, "Lamaran berhasil dikirim!", Toast.LENGTH_LONG).show();
-                            // TODO: bisa tampilkan snackbar atau navigasi
-                        } else {
-                            Toast.makeText(JobDetailActivity.this, "Gagal mengirim lamaran (code " + responseCode[0] + ")", Toast.LENGTH_LONG).show();
-                        }
-                    });
-
-                    connection.disconnect();
-                } catch (Exception e) {
-                    Log.e(TAG, "❌ Error uploadLamaran: " + e.getMessage(), e);
-                    runOnUiThread(() -> Toast.makeText(JobDetailActivity.this, "Error mengirim lamaran: " + e.getMessage(), Toast.LENGTH_LONG).show());
-                }
-            }).start();
-
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Preparing lamaran error: " + e.getMessage(), e);
+            Log.d(TAG, "📤 Uploading lamaran data: " + body.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "❌ Error creating JSON: " + e.getMessage());
             Toast.makeText(this, "Error menyiapkan data lamaran", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        StringRequest request = new StringRequest(
+                Request.Method.POST,
+                url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d(TAG, "✅ Lamaran berhasil dikirim! Response: " + response);
+
+                        hasApplied = true;
+                        runOnUiThread(() -> {
+                            btnApply.setEnabled(false);
+                            btnApply.setAlpha(0.5f);
+                            btnApply.setText("✓ Telah Dilamar");
+                            Toast.makeText(JobDetailActivity.this, "✅ Lamaran berhasil dikirim!", Toast.LENGTH_LONG).show();
+                        });
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        if (error.networkResponse != null) {
+                            int statusCode = error.networkResponse.statusCode;
+                            Log.d(TAG, "📨 Response Status Code: " + statusCode);
+
+                            if (statusCode == 201 || statusCode == 204) {
+                                Log.d(TAG, "✅ DATA BERHASIL MASUK KE SUPABASE! Status: " + statusCode);
+
+                                hasApplied = true;
+                                runOnUiThread(() -> {
+                                    btnApply.setEnabled(false);
+                                    btnApply.setAlpha(0.5f);
+                                    btnApply.setText("Telah Dilamar");
+                                    Toast.makeText(JobDetailActivity.this, "✅ Lamaran berhasil dikirim!", Toast.LENGTH_LONG).show();
+                                });
+                                return;
+                            }
+
+                            String errorBody = error.networkResponse.data != null ?
+                                    new String(error.networkResponse.data) : "No error body";
+                            Log.e(TAG, "❌ Real Error - Status: " + statusCode + ", Body: " + errorBody);
+
+                            runOnUiThread(() -> {
+                                if (statusCode == 409) {
+                                    hasApplied = true;
+                                    btnApply.setEnabled(false);
+                                    btnApply.setAlpha(0.5f);
+                                    btnApply.setText("✓ Telah Dilamar");
+                                    Toast.makeText(JobDetailActivity.this, "❌ Anda sudah melamar lowongan ini sebelumnya", Toast.LENGTH_LONG).show();
+                                } else if (statusCode == 400) {
+                                    Toast.makeText(JobDetailActivity.this, "❌ Data tidak valid", Toast.LENGTH_LONG).show();
+                                } else if (statusCode == 401) {
+                                    Toast.makeText(JobDetailActivity.this, "❌ Tidak diizinkan - silakan login ulang", Toast.LENGTH_LONG).show();
+                                } else {
+                                    Toast.makeText(JobDetailActivity.this, "❌ Gagal mengirim lamaran (Error: " + statusCode + ")", Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        } else {
+                            Log.e(TAG, "❌ Network error: " + error.toString());
+                            runOnUiThread(() -> {
+                                Toast.makeText(JobDetailActivity.this, "❌ Error jaringan - periksa koneksi internet", Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    }
+                }
+        ) {
+            @Override
+            public byte[] getBody() {
+                try {
+                    return body.toString().getBytes("utf-8");
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public String getBodyContentType() {
+                return "application/json";
+            }
+
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("apikey", SUPABASE_API_KEY);
+                headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                headers.put("Content-Type", "application/json");
+                headers.put("Prefer", "return=minimal");
+                return headers;
+            }
+        };
+
+        requestQueue.add(request);
+    }
+
+    private String getFileNameFromUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return "Unknown File";
+        }
+        try {
+            String[] parts = url.split("/");
+            return parts[parts.length - 1];
+        } catch (Exception e) {
+            return "CV File";
         }
     }
 
@@ -418,7 +796,6 @@ public class JobDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Bersihkan nomor - hapus semua non-digit
         String cleanNumber = phoneNumber.replaceAll("[^0-9]", "");
         Log.d(TAG, "Cleaned Phone (numeric only): " + cleanNumber);
 
@@ -427,24 +804,18 @@ public class JobDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Handle berbagai format nomor
         if (cleanNumber.startsWith("62")) {
-            // Nomor sudah dalam format internasional Indonesia, langsung gunakan
             Log.d(TAG, "✅ Phone already in international format (62)");
         } else if (cleanNumber.startsWith("0")) {
-            // Ganti 0 dengan 62
             cleanNumber = "62" + cleanNumber.substring(1);
             Log.d(TAG, "🔄 Converted 0 to 62 format: " + cleanNumber);
         } else {
-            // Tambahkan 62 jika tidak ada kode negara
             cleanNumber = "62" + cleanNumber;
             Log.d(TAG, "➕ Added 62 prefix: " + cleanNumber);
         }
 
-        // Pastikan tidak ada karakter tambahan
         cleanNumber = cleanNumber.replaceAll("[^0-9]", "");
 
-        // Validasi panjang nomor (minimal 10 digit setelah 62)
         if (cleanNumber.length() < 12) {
             Toast.makeText(this, "❌ Nomor telepon terlalu pendek", Toast.LENGTH_SHORT).show();
             Log.e(TAG, "❌ Phone number too short: " + cleanNumber);

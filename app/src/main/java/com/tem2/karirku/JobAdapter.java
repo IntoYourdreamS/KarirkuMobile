@@ -9,7 +9,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import com.android.volley.NetworkResponse;
+import com.android.volley.toolbox.StringRequest;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -18,6 +19,8 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -127,7 +130,7 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         holder.tvTag2.setVisibility(job.getTag2().isEmpty() ? View.GONE : View.VISIBLE);
         holder.tvTag3.setVisibility(job.getTag3().isEmpty() ? View.GONE : View.VISIBLE);
 
-        holder.imgCompany.setImageResource(R.drawable.iconloker);
+        loadCompanyLogo(holder.imgCompany, job);
 
         boolean isSaved = savedJobIds.contains(job.getIdLowongan());
         updateSaveButton(holder.btnSave, isSaved);
@@ -157,6 +160,45 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
             intent.putExtra("JOB_DATA", job);
             context.startActivity(intent);
         });
+    }
+
+    private void loadCompanyLogo(ImageView imageView, Job job) {
+        String logoUrl = job.getLogoUrl();
+        String logoPath = job.getLogoPath();
+
+        Log.d("JOB_ADAPTER", "Loading logo for company: " + job.getCompanyName());
+        Log.d("JOB_ADAPTER", "   Logo URL: " + logoUrl);
+        Log.d("JOB_ADAPTER", "   Logo Path: " + logoPath);
+
+        if (logoUrl != null && !logoUrl.trim().isEmpty()) {
+            Log.d("JOB_ADAPTER", "Using logo_url: " + logoUrl);
+            Glide.with(context)
+                    .load(logoUrl)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(R.drawable.iconloker)
+                    .error(R.drawable.iconloker)
+                    .circleCrop()
+                    .into(imageView);
+        }
+        else if (logoPath != null && !logoPath.trim().isEmpty()) {
+            String builtUrl = buildLogoUrlFromPath(logoPath);
+            Log.d("JOB_ADAPTER", "Built URL from path: " + builtUrl);
+            Glide.with(context)
+                    .load(builtUrl)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(R.drawable.iconloker)
+                    .error(R.drawable.iconloker)
+                    .circleCrop()
+                    .into(imageView);
+        }
+        else {
+            Log.d("JOB_ADAPTER", "No logo available, using default");
+            imageView.setImageResource(R.drawable.iconloker);
+        }
+    }
+
+    private String buildLogoUrlFromPath(String logoPath) {
+        return "https://tkjnbelcgfwpbhppsnrl.supabase.co/storage/v1/object/public/" + logoPath;
     }
 
     private void updateSaveButton(ImageView btnSave, boolean isSaved) {
@@ -271,10 +313,9 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
 
         RequestQueue queue = Volley.newRequestQueue(context);
 
-        JsonObjectRequest request = new JsonObjectRequest(
+        StringRequest request = new StringRequest(
                 Request.Method.DELETE,
                 url,
-                null,
                 response -> {
                     Log.d("FAVORITE", "Berhasil menghapus dari favorit");
                     savedJobIds.remove((Integer) jobId);
@@ -301,7 +342,20 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
 
                         Log.d("FAVORITE", "Delete Error - Status: " + statusCode + ", Body: " + errorBody);
 
-                        if (statusCode == 404) {
+                        if (statusCode == 204) {
+                            Log.d("FAVORITE", "204 No Content - Data berhasil dihapus");
+                            savedJobIds.remove((Integer) jobId);
+
+                            if (isSavedMode) {
+                                jobList.remove(position);
+                                notifyItemRemoved(position);
+                                notifyItemRangeChanged(position, jobList.size());
+                            } else {
+                                updateSaveButton(holder.btnSave, false);
+                            }
+                            Toast.makeText(context, "Lowongan dihapus dari disimpan", Toast.LENGTH_SHORT).show();
+                            sendSavedCountUpdateBroadcast();
+                        } else if (statusCode == 404) {
                             Log.d("FAVORITE", "Error 404 - Data sudah dihapus, update UI");
                             savedJobIds.remove((Integer) jobId);
 
@@ -401,7 +455,7 @@ public class JobAdapter extends RecyclerView.Adapter<JobAdapter.JobViewHolder> {
         public JobViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            imgCompany = itemView.findViewById(R.id.imgCompany);
+            imgCompany = itemView.findViewById(R.id.imgCompanyLogo);
             btnSave = itemView.findViewById(R.id.btnSave);
             tvCompanyName = itemView.findViewById(R.id.tvCompanyName);
             tvLocation = itemView.findViewById(R.id.tvLocation);

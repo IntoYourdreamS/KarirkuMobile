@@ -371,7 +371,7 @@
             android:layout_marginBottom="12dp" />
 
         <Button
-            android:id="@+id/btnApplywa"
+            android:id="@+id/btnApply"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:text=" Lamar Pekerjaan Ini"

@@ -37,10 +37,10 @@ public class profilFragment extends Fragment {
     private static final String SUPABASE_URL = "https://tkjnbelcgfwpbhppsnrl.supabase.co";
     private static final String SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRram5iZWxjZ2Z3cGJocHBzbnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDA3NjIsImV4cCI6MjA3NzMxNjc2Mn0.wOjK4X2qJV6LzOG4yXxnfeTezDX5_3Sb3wezhCuQAko";
 
-    private TextView tvName, tvEmail, tvJumlahDisimpan;
+    private TextView tvName, tvEmail, tvJumlahDisimpan, tvJumlahDilamar;
     private CircleImageView imgProfile;
     private SessionManager sessionManager;
-    private BroadcastReceiver savedJobsCountReceiver;
+    private BroadcastReceiver jobsCountReceiver;
     private boolean isReceiverRegistered = false;
 
     @Nullable
@@ -62,13 +62,16 @@ public class profilFragment extends Fragment {
             tvEmail = view.findViewById(R.id.tvSelengkapnya);
             imgProfile = view.findViewById(R.id.imgProfile);
             tvJumlahDisimpan = view.findViewById(R.id.tvJumlahDisimpan);
+            tvJumlahDilamar = view.findViewById(R.id.tvJumlahDilamar);
 
             if (tvName != null) tvName.setText("Memuat...");
             if (tvEmail != null) tvEmail.setText("Memuat...");
             if (tvJumlahDisimpan != null) tvJumlahDisimpan.setText("0");
+            if (tvJumlahDilamar != null) tvJumlahDilamar.setText("0");
 
             loadUserData();
             loadSavedJobsCount();
+            loadAppliedJobsCount();
 
             setupClickListeners(view);
             setupBroadcastReceiver();
@@ -83,21 +86,27 @@ public class profilFragment extends Fragment {
 
     private void setupBroadcastReceiver() {
         try {
-            savedJobsCountReceiver = new BroadcastReceiver() {
+            jobsCountReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    if ("UPDATE_SAVED_JOBS_COUNT".equals(intent.getAction())) {
+                    String action = intent.getAction();
+                    if ("UPDATE_SAVED_JOBS_COUNT".equals(action)) {
                         Log.d(TAG, "Broadcast received, updating saved jobs count");
                         loadSavedJobsCount();
+                    } else if ("UPDATE_APPLIED_JOBS_COUNT".equals(action)) {
+                        Log.d(TAG, "Broadcast received, updating applied jobs count");
+                        loadAppliedJobsCount();
                     }
                 }
             };
 
             if (getContext() != null) {
-                IntentFilter filter = new IntentFilter("UPDATE_SAVED_JOBS_COUNT");
-                getContext().registerReceiver(savedJobsCountReceiver, filter);
+                IntentFilter filter = new IntentFilter();
+                filter.addAction("UPDATE_SAVED_JOBS_COUNT");
+                filter.addAction("UPDATE_APPLIED_JOBS_COUNT");
+                getContext().registerReceiver(jobsCountReceiver, filter);
                 isReceiverRegistered = true;
-                Log.d(TAG, "Broadcast receiver registered");
+                Log.d(TAG, "Broadcast receiver registered for both saved and applied jobs");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error setting up broadcast receiver: " + e.getMessage());
@@ -109,9 +118,9 @@ public class profilFragment extends Fragment {
         super.onDestroyView();
         Log.d(TAG, "onDestroyView dipanggil");
 
-        if (isReceiverRegistered && savedJobsCountReceiver != null && getContext() != null) {
+        if (isReceiverRegistered && jobsCountReceiver != null && getContext() != null) {
             try {
-                getContext().unregisterReceiver(savedJobsCountReceiver);
+                getContext().unregisterReceiver(jobsCountReceiver);
                 isReceiverRegistered = false;
                 Log.d(TAG, "Broadcast receiver unregistered");
             } catch (Exception e) {
@@ -127,6 +136,7 @@ public class profilFragment extends Fragment {
 
         try {
             loadSavedJobsCount();
+            loadAppliedJobsCount();
             loadUserData();
         } catch (Exception e) {
             Log.e(TAG, "Error in onResume: " + e.getMessage());
@@ -222,6 +232,99 @@ public class profilFragment extends Fragment {
             Log.e(TAG, "Error in loadSavedJobsCount: " + e.getMessage(), e);
             if (tvJumlahDisimpan != null) {
                 tvJumlahDisimpan.setText("0");
+            }
+        }
+    }
+
+    private void loadAppliedJobsCount() {
+        try {
+            if (sessionManager == null || tvJumlahDilamar == null) {
+                Log.e(TAG, "SessionManager atau tvJumlahDilamar null");
+                return;
+            }
+
+            int userId = sessionManager.getUserId();
+            if (userId == 0) {
+                Log.w(TAG, "User ID is 0");
+                if (tvJumlahDilamar != null) {
+                    tvJumlahDilamar.setText("0");
+                }
+                return;
+            }
+
+            String getPencakerUrl = SUPABASE_URL + "/rest/v1/pencaker?id_pengguna=eq." + userId + "&select=id_pencaker";
+
+            RequestQueue queue = Volley.newRequestQueue(requireContext());
+            JsonArrayRequest getPencakerRequest = new JsonArrayRequest(Request.Method.GET, getPencakerUrl, null,
+                    response -> {
+                        try {
+                            if (response.length() > 0) {
+                                JSONObject pencaker = response.getJSONObject(0);
+                                int pencakerId = pencaker.getInt("id_pencaker");
+
+                                String countUrl = SUPABASE_URL + "/rest/v1/lamaran" +
+                                        "?id_pencaker=eq." + pencakerId +
+                                        "&select=id_lamaran";
+
+                                JsonArrayRequest countRequest = new JsonArrayRequest(Request.Method.GET, countUrl, null,
+                                        countResponse -> {
+                                            int count = countResponse.length();
+                                            if (tvJumlahDilamar != null) {
+                                                tvJumlahDilamar.setText(String.valueOf(count));
+                                            }
+                                            Log.d(TAG, "Jumlah lowongan dilamar: " + count + " for pencaker: " + pencakerId);
+                                        },
+                                        error -> {
+                                            Log.e(TAG, "Gagal memuat jumlah dilamar: " + error.toString());
+                                            if (tvJumlahDilamar != null) {
+                                                tvJumlahDilamar.setText("0");
+                                            }
+                                        }
+                                ) {
+                                    @Override
+                                    public Map<String, String> getHeaders() {
+                                        Map<String, String> headers = new HashMap<>();
+                                        headers.put("apikey", SUPABASE_API_KEY);
+                                        headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                                        return headers;
+                                    }
+                                };
+
+                                queue.add(countRequest);
+                            } else {
+                                Log.e(TAG, "No pencaker found for user: " + userId);
+                                if (tvJumlahDilamar != null) {
+                                    tvJumlahDilamar.setText("0");
+                                }
+                            }
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Error parsing pencaker data: " + e.getMessage());
+                            if (tvJumlahDilamar != null) {
+                                tvJumlahDilamar.setText("0");
+                            }
+                        }
+                    },
+                    error -> {
+                        Log.e(TAG, "Error loading pencaker ID: " + error.toString());
+                        if (tvJumlahDilamar != null) {
+                            tvJumlahDilamar.setText("0");
+                        }
+                    }
+            ) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("apikey", SUPABASE_API_KEY);
+                    headers.put("Authorization", "Bearer " + SUPABASE_API_KEY);
+                    return headers;
+                }
+            };
+
+            queue.add(getPencakerRequest);
+        } catch (Exception e) {
+            Log.e(TAG, "Error in loadAppliedJobsCount: " + e.getMessage(), e);
+            if (tvJumlahDilamar != null) {
+                tvJumlahDilamar.setText("0");
             }
         }
     }
@@ -413,8 +516,17 @@ public class profilFragment extends Fragment {
             });
 
             view.findViewById(R.id.btnSetting).setOnClickListener(v -> {
-                Toast.makeText(getActivity(), "Fitur settings", Toast.LENGTH_SHORT).show();
+                try {
+                    startActivity(new Intent(getActivity(), UpdateAkunActivity.class));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error opening UserDataActivity: " + e.getMessage());
+                    Toast.makeText(getContext(), "Tidak dapat membuka halaman", Toast.LENGTH_SHORT).show();
+                }
             });
+
+//            view.findViewById(R.id.btnSetting).setOnClickListener(v -> {
+//                Toast.makeText(getActivity(), "Fitur settings", Toast.LENGTH_SHORT).show();
+//            });
 
             view.findViewById(R.id.btnLengkapiProfil).setOnClickListener(v -> {
                 try {

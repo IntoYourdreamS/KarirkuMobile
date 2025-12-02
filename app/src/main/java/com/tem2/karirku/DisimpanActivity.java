@@ -124,10 +124,10 @@ public class DisimpanActivity extends AppCompatActivity {
             return;
         }
 
-        // PERBAIKAN: Gunakan query yang lebih sederhana dan pastikan
+        // PERBAIKAN: Ambil nama_perusahaan dari tabel perusahaan
         String url = SUPABASE_URL + "/rest/v1/favorit_lowongan" +
                 "?id_pencaker=eq." + currentPencakerId +
-                "&select=id_lowongan,lowongan(*)";
+                "&select=id_lowongan,lowongan(*,perusahaan(nama_perusahaan,logo_url,logo_path,id_perusahaan))";
 
         Log.d("DISIMPAN_DEBUG", "🔍 Loading saved jobs dari URL: " + url);
 
@@ -219,7 +219,26 @@ public class DisimpanActivity extends AppCompatActivity {
                     String modeKerja = lowongan.optString("mode_kerja", "On-site");
                     String benefit = lowongan.optString("benefit", "");
                     String noTelp = lowongan.optString("no_telp", "");
-                    String namaPerusahaan = lowongan.optString("nama_perusahaan", "Perusahaan");
+
+                    // PERBAIKAN: Ambil nama_perusahaan dari tabel perusahaan
+                    String namaPerusahaan = "Perusahaan"; // default
+                    String logoUrl = "";
+                    String logoPath = "";
+                    int idPerusahaan = 0;
+
+                    // Ambil dari objek perusahaan jika ada
+                    if (lowongan.has("perusahaan")) {
+                        try {
+                            JSONObject perusahaan = lowongan.getJSONObject("perusahaan");
+                            namaPerusahaan = perusahaan.optString("nama_perusahaan", "Perusahaan");
+                            logoUrl = perusahaan.optString("logo_url", "");
+                            logoPath = perusahaan.optString("logo_path", "");
+                            idPerusahaan = perusahaan.optInt("id_perusahaan", 0);
+                            Log.d("DISIMPAN_DEBUG", "✅ Found company data - Name: " + namaPerusahaan + ", Logo URL: " + logoUrl);
+                        } catch (JSONException e) {
+                            Log.e("DISIMPAN_DEBUG", "❌ Error parsing perusahaan data: " + e.getMessage());
+                        }
+                    }
 
                     // Format waktu posting
                     String postedTime = "Baru saja";
@@ -231,9 +250,11 @@ public class DisimpanActivity extends AppCompatActivity {
                     // Format jumlah pendaftar (default)
                     String applicants = gaji + " Pendaftar";
 
-                    Log.d("DISIMPAN_DEBUG", "📦 Parsed Job - ID: " + idLowongan + ", Title: " + judul + ", Company: " + namaPerusahaan);
+                    Log.d("DISIMPAN_DEBUG", "📦 Parsed Job - ID: " + idLowongan +
+                            ", Title: " + judul + ", Company: " + namaPerusahaan +
+                            ", Logo URL: " + logoUrl);
 
-                    // Buat objek Job dengan constructor yang benar
+                    // Buat objek Job dengan constructor yang lengkap
                     Job job = new Job(
                             idLowongan,
                             namaPerusahaan,
@@ -248,7 +269,10 @@ public class DisimpanActivity extends AppCompatActivity {
                             deskripsi,
                             kualifikasi,
                             benefit,
-                            noTelp
+                            noTelp,
+                            logoUrl,
+                            logoPath,
+                            idPerusahaan
                     );
 
                     savedJobList.add(job);

@@ -17,7 +17,7 @@ public class SessionManager {
     private static final String KEY_IS_LOGGED_IN = "is_logged_in";
     private static final String KEY_LOGIN_TIME = "login_time";
 
-    private SharedPreferences prefs;
+    public SharedPreferences prefs;
     private SharedPreferences.Editor editor;
     private Context context;
 
@@ -99,7 +99,13 @@ public class SessionManager {
         editor.putString(KEY_USER_NAME, name);
         editor.putString(KEY_USER_PHONE, phone);
         editor.apply();
-        Log.d("SESSION", "Profile updated");
+        Log.d("SESSION", "Profile updated - Name: " + name + ", Phone: " + phone);
+    }
+
+    public void updateUserEmail(String email) {
+        editor.putString(KEY_USER_EMAIL, email);
+        editor.apply();
+        Log.d("SESSION", "Email updated to: " + email);
     }
 
     public void clearSession() {

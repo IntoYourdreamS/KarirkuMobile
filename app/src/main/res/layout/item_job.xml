@@ -10,12 +10,12 @@
 
     <!-- 🏢 Logo perusahaan -->
     <ImageView
-        android:id="@+id/imgCompany"
+        android:id="@+id/imgCompanyLogo"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginEnd="12dp"
         android:src="@drawable/iconloker"
-        android:contentDescription="@string/company_logo" />
+        android:contentDescription="Company Logo" />
 
     <!-- 📄 Informasi lowongan -->
     <LinearLayout
@@ -130,7 +130,7 @@
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_gravity="top"
-        android:contentDescription="@string/save_job"
+        android:contentDescription="Save Job"
         android:src="@drawable/ic_simpan" />
 
 </LinearLayout>
